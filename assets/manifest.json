@@ -8,7 +8,7 @@
   "start_url": "/",
   "icons": [
     {
-      "src": "https://next-cast.vercel.app/assets/icon.png",
+      "src": "https://next-cast.vercel.app/assets/icon-t.png",
       "type": "image/png",
       "sizes": "512x512"
     }

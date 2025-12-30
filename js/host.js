@@ -130,7 +130,6 @@ function onPlayerStateChange(event) {
   if (event.data === 1) {
     // PLAYING
     isPlaying = true;
-    document.getElementById("spin-icon").classList.add("text-pink-500");
     document
       .getElementById("play-btn-icon")
       .classList.replace("fa-play", "fa-pause");
@@ -147,7 +146,6 @@ function onPlayerStateChange(event) {
   } else if (event.data === 2) {
     // PAUSED
     isPlaying = false;
-    document.getElementById("spin-icon").classList.remove("text-pink-500");
     document
       .getElementById("play-btn-icon")
       .classList.replace("fa-pause", "fa-play");
@@ -372,7 +370,7 @@ function renderDashboard() {
         <div class="flex justify-between items-center p-2 bg-zinc-800/30 rounded border border-white/5 text-xs">
             <span class="${
               u.id === state.masterId
-                ? "text-pink-500 font-bold"
+                ? "text-red-500 font-bold"
                 : "text-gray-300"
             }">
                 ${u.name} ${u.id === state.masterId ? "👑" : ""}
@@ -438,12 +436,12 @@ function switchTab(tab) {
   ["dashboard", "settings"].forEach((t) => {
     document.getElementById(`view-${t}`).classList.add("hidden");
     const tabBtn = document.getElementById(`tab-${t}`);
-    tabBtn.classList.replace("border-pink-500", "border-transparent");
+    tabBtn.classList.replace("border-red-600", "border-transparent");
     tabBtn.classList.replace("text-white", "text-gray-500");
   });
   document.getElementById(`view-${tab}`).classList.remove("hidden");
   const activeBtn = document.getElementById(`tab-${tab}`);
-  activeBtn.classList.replace("border-transparent", "border-pink-500");
+  activeBtn.classList.replace("border-transparent", "border-red-600");
   activeBtn.classList.replace("text-gray-500", "text-white");
 }
 
@@ -513,4 +511,13 @@ function resetIdle() {
       footer.classList.add("opacity-0-force");
     }
   }, 3000);
+}
+
+function copyJoinLink() {
+  const link = document.getElementById("join-url").href;
+  if (link && link !== "#") {
+    navigator.clipboard.writeText(link).then(() => {
+      showToast("Link Copied!", "success");
+    });
+  }
 }

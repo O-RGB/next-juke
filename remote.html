@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="css/style.css" />
     <style>body { overflow-y: auto; }</style>
 </head>
-<body class="flex flex-col h-screen overflow-hidden font-sans bg-black">
+<body class="flex flex-col h-screen overflow-hidden font-sans bg-black selection:bg-red-500 selection:text-white">
     <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-zinc-800 border border-zinc-700 text-white px-4 py-2 rounded-full shadow-xl transition-opacity duration-300 opacity-0 pointer-events-none text-sm font-bold flex items-center gap-2 whitespace-nowrap pt-safe">
         <i class="fa-solid fa-check text-green-500"></i><span id="toast-msg">Success</span>
     </div>
@@ -20,8 +20,8 @@
     <div id="login-screen" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6">
         <div class="w-full max-w-sm glass-panel p-8 rounded-3xl text-center space-y-6">
             <h1 class="text-2xl font-bold text-white">เข้าร่วมปาร์ตี้</h1>
-            <input id="username-input" type="text" placeholder="ใส่ชื่อของคุณ" class="w-full bg-zinc-900 border border-zinc-700 p-4 rounded-xl text-center text-white outline-none focus:border-zinc-500 transition-colors" />
-            <button onclick="handleJoin()" class="w-full bg-zinc-100 text-black p-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">เข้าห้อง</button>
+            <input id="username-input" type="text" placeholder="ใส่ชื่อของคุณ" class="w-full bg-zinc-900 border border-zinc-700 p-4 rounded-xl text-center text-white outline-none focus:border-red-600 transition-colors" />
+            <button onclick="handleJoin()" class="w-full bg-red-600 hover:bg-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-600/20 active:scale-95 transition-all">เข้าห้อง</button>
             <p id="error-msg" class="text-red-500 text-xs"></p>
         </div>
     </div>
@@ -40,12 +40,12 @@
 
         <div class="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
             <div class="glass-panel p-4 rounded-2xl space-y-3">
-                <div class="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider"><i class="fa-brands fa-youtube text-red-500 text-lg"></i> ขอเพลง (YouTube)</div>
+                <div class="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider"><i class="fa-brands fa-youtube text-red-600 text-lg"></i> ขอเพลง (YouTube)</div>
                 <div class="flex gap-2">
-                    <button onclick="pasteFromClipboard()" class="w-12 flex items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/20 active:scale-95 transition-transform" title="วางลิงก์ที่ก๊อปมา">
+                    <button onclick="pasteFromClipboard()" class="w-12 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700 active:scale-95 transition-transform" title="วางลิงก์ที่ก๊อปมา">
                         <i class="fa-solid fa-paste"></i>
                     </button>
-                    <input id="url-input" type="text" placeholder="วางลิงก์ YouTube ที่นี่..." class="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-sm focus:border-pink-500 outline-none transition-colors" />
+                    <input id="url-input" type="text" placeholder="วางลิงก์ YouTube ที่นี่..." class="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-sm focus:border-red-600 outline-none transition-colors" />
                     <button onclick="addSong()" id="add-btn" class="w-12 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-gray-500 transition-colors" disabled><i class="fa-solid fa-plus"></i></button>
                 </div>
 
