@@ -1,4 +1,4 @@
-// js/host.js - Full Code with Fixes
+// js/host.js - Full Code with iOS Fixes
 
 let wakeLock = null;
 let player, peer, peerId;
@@ -170,9 +170,11 @@ function createPlayer() {
 }
 
 function onPlayerReady(event) {
+  // [iOS FIX] Force mute and play immediately
+  event.target.mute();
   if (state.settings.quality !== "auto")
     event.target.setPlaybackQuality(state.settings.quality);
-  event.target.mute();
+  event.target.playVideo();
 }
 
 function onPlayerStateChange(event) {
@@ -186,7 +188,8 @@ function onPlayerStateChange(event) {
       .getElementById("play-btn-icon")
       .classList.replace("fa-play", "fa-pause");
     document.getElementById("buffering-indicator").classList.add("hidden");
-    // ซ่อน QR ถ้าเล่นอยู่
+
+    // Fix QR hiding logic
     document
       .getElementById("qr-screen")
       .classList.add("opacity-0", "pointer-events-none");
@@ -322,7 +325,7 @@ function triggerNext() {
     const cdOverlay = document.getElementById("countdown-overlay");
     const cdNum = document.getElementById("cd-number");
 
-    // [FIX 1] ซ่อน QR Code ทันทีที่เริ่มนับถอยหลัง
+    // Fix QR hiding logic
     document
       .getElementById("qr-screen")
       .classList.add("opacity-0", "pointer-events-none");
@@ -349,7 +352,6 @@ function triggerNext() {
     state.currentSong = null;
     player.stopVideo();
 
-    // [FIX 2] ซ่อนชื่อเพลงบน Header ถ้าไม่มีเพลงเล่น
     const headerTitle = document.getElementById("header-song-title");
     if (headerTitle) headerTitle.classList.add("hidden");
 
@@ -365,7 +367,6 @@ function playSong(song) {
   updateMediaSession(song);
   renderDashboard();
 
-  // [FIX 3] แสดงชื่อเพลงบน Header
   const headerTitle = document.getElementById("header-song-title");
   if (headerTitle) {
     headerTitle.innerText = song.title;
@@ -401,11 +402,9 @@ function broadcastState() {
   });
 }
 
-// [FIX 4] ปรับปรุง Toast Function ให้รองรับ Text ยาวๆ
 function showToast(msg, type = "info") {
   const t = document.createElement("div");
   const color = type === "success" ? "text-green-400" : "text-blue-400";
-  // ใช้ w-full แต่มี max-width ใน container, word-break
   t.className = `bg-zinc-900 border border-zinc-700 text-white px-4 py-3 rounded-xl shadow-xl animate-[fadeIn_0.3s] text-sm font-bold flex items-center gap-2 w-full`;
   t.innerHTML = `
     <i class="fa-solid fa-${
