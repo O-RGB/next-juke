@@ -2,90 +2,598 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
     <title>NextJuke - Party Jukebox</title>
+    <meta name="description" content="เปลี่ยนทุกหน้าจอเป็น Party Jukebox ด้วย YouTube ให้เพื่อนช่วยกันเลือกเพลงผ่านมือถือได้ทันที">
+    <meta property="og:title" content="NextJuke - Party Jukebox">
+    <meta property="og:description" content="เปลี่ยนทุกหน้าจอเป็น Party Jukebox ด้วย YouTube ให้เพื่อนช่วยกันเลือกเพลงผ่านมือถือได้ทันที">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"> <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiTmV4dEp1a2UiLCJzaG9ydF9uYW1lIjoiTmV4dEp1a2UiLCJkaXNwbGF5IjoiZnVsbHNjcmVlbiIsImJhY2tncm91bmRfY29sb3IiOiIjMDAwMDAwIiwidGhlbWVfY29sb3IiOiIjMDAwMDAwIiwic3RhcnRfdXJsIjoiLyIsImljb25zIjpWXX0=">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <style>
+        body { overflow-x: hidden; background: #000; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .slider-thumb::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 0; height: 0; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #ffffff; cursor: pointer; margin-top: -6px; opacity: 0; }
+        input[type="range"]:hover::-webkit-slider-thumb { opacity: 1; }
+        .hidden-force { display: none !important; }
+        
+        /* Animation for Countdown */
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    </style>
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    animation: {
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    }
-                }
-            }
+            theme: { extend: { animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite', } } }
         }
     </script>
 </head>
-<body class="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-pink-500 selection:text-white">
+<body class="bg-black text-white font-sans h-screen w-screen relative overflow-hidden">
 
-    <nav class="p-6 flex justify-between items-center max-w-7xl mx-auto w-full">
-        <div class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-orange-500">
-            NextJuke
-        </div>
-        <a href="player.html" class="bg-white text-black px-6 py-2 rounded-full font-bold hover:scale-105 transition">
-            เปิด Player
-        </a>
-    </nav>
+    <div id="landing-view" class="absolute inset-0 z-[100] bg-black flex flex-col overflow-y-auto transition-opacity duration-700">
+        <nav class="p-6 flex justify-between items-center max-w-7xl mx-auto w-full shrink-0">
+            <div class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-orange-500">
+                NextJuke
+            </div>
+        </nav>
 
-    <main class="flex-1 flex flex-col items-center justify-center text-center p-6 space-y-8 max-w-4xl mx-auto animate-[fadeIn_0.7s_ease-in-out]">
-        <div class="space-y-4">
-            <h1 class="text-5xl sm:text-7xl font-extrabold tracking-tight leading-tight">
-                เปลี่ยนทุกหน้าจอ <br />
-                เป็น <span class="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-500">Party Jukebox.</span>
-            </h1>
-            <p class="text-xl text-gray-400 max-w-2xl mx-auto">
-                สร้างห้องปาร์ตี้ แชร์ QR Code แล้วให้เพื่อนๆ ช่วยกันเลือกเพลงผ่านมือถือ ไม่ต้องโหลดแอป ไม่ต้องล็อกอิน
-            </p>
-        </div>
+        <main class="flex-1 flex flex-col items-center justify-center text-center p-6 space-y-8 max-w-4xl mx-auto animate-[fadeIn_0.7s_ease-in-out]">
+            <div class="space-y-4">
+                <h1 class="text-5xl sm:text-7xl font-extrabold tracking-tight leading-tight">
+                    เปลี่ยนทุกหน้าจอ <br />
+                    เป็น <span class="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-500">Party Jukebox.</span>
+                </h1>
+                <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+                    สร้างห้องปาร์ตี้ แชร์ QR Code แล้วให้เพื่อนๆ ช่วยกันเลือกเพลงผ่านมือถือ
+                </p>
+            </div>
 
-        <a href="player.html" class="group relative inline-flex items-center justify-center gap-3 bg-pink-600 hover:bg-pink-500 text-white px-8 py-4 rounded-full text-xl font-bold transition-all hover:shadow-[0_0_40px_rgba(236,72,153,0.6)]">
-            <i class="fa-solid fa-rocket"></i> เริ่มปาร์ตี้เลย
-            <span class="absolute inset-0 rounded-full ring-2 ring-white/20 group-hover:ring-white/40 animate-pulse"></span>
-        </a>
+            <button onclick="startApp()" class="group relative inline-flex items-center justify-center gap-3 bg-pink-600 hover:bg-pink-500 text-white px-8 py-4 rounded-full text-xl font-bold transition-all hover:shadow-[0_0_40px_rgba(236,72,153,0.6)]">
+                <i class="fa-solid fa-rocket"></i> เริ่มปาร์ตี้เลย
+                <span class="absolute inset-0 rounded-full ring-2 ring-white/20 group-hover:ring-white/40 animate-pulse"></span>
+            </button>
 
-        <div class="w-full mt-24 mb-10 p-1">
-            <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 to-purple-900 border border-white/10 p-8 sm:p-12 text-left flex flex-col sm:flex-row items-center justify-between gap-8 group">
-                <div class="absolute top-0 right-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-
-                <div class="space-y-4 relative z-10 max-w-xl">
-                    <div class="flex items-center gap-3 text-indigo-300 font-bold uppercase tracking-wider text-sm">
-                        <i class="fa-solid fa-music"></i> แนะนำเพื่อนบ้าน
-                    </div>
-                    <h2 class="text-3xl sm:text-4xl font-bold text-white">NextKaraoke</h2>
-                    <p class="text-gray-300 text-lg leading-relaxed">
-                        อีกหนึ่งทางเลือกสำหรับสายร้อง! แอปเล่นคาราโอเกะบนเว็บ รองรับไฟล์ <span class="text-white font-bold">MIDI, EMK, NCN</span> เต็มรูปแบบ
-                    </p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full mt-16 text-left pb-10">
+                <div class="p-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl">
+                    <div class="text-3xl mb-4 text-red-500"><i class="fa-brands fa-youtube"></i></div>
+                    <h3 class="text-xl font-bold mb-2">YouTube Powered</h3>
+                    <p class="text-gray-400 text-sm">เพลงนับล้านจาก YouTube</p>
                 </div>
+                <div class="p-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl">
+                    <div class="text-3xl mb-4 text-blue-500"><i class="fa-solid fa-qrcode"></i></div>
+                    <h3 class="text-xl font-bold mb-2">Easy Join</h3>
+                    <p class="text-gray-400 text-sm">สแกน QR Code เล่นได้เลย</p>
+                </div>
+                <div class="p-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl">
+                    <div class="text-3xl mb-4 text-purple-500"><i class="fa-solid fa-users"></i></div>
+                    <h3 class="text-xl font-bold mb-2">Queue System</h3>
+                    <p class="text-gray-400 text-sm">ระบบคิวเพลงที่ยุติธรรม</p>
+                </div>
+            </div>
+        </main>
+        <footer class="p-6 text-center text-gray-600 text-sm shrink-0">
+            NextJuke © 2025
+        </footer>
+    </div>
 
-                <a href="https://next-karaoke.vercel.app/" target="_blank" class="relative z-10 shrink-0 bg-white text-indigo-900 px-8 py-4 rounded-full font-bold text-lg flex items-center gap-2 hover:bg-indigo-50 hover:scale-105 transition shadow-xl">
-                    ลองดูไหม <i class="fa-solid fa-arrow-right"></i>
-                </a>
+    <div id="player-view" class="absolute inset-0 z-0 hidden opacity-0 transition-opacity duration-1000">
+        
+        <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+        <div id="interaction-overlay" class="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md hidden transition-all duration-300">
+            <div onclick="handleUserInteraction()" class="bg-black/80 p-8 rounded-3xl border border-white/10 shadow-2xl flex flex-col items-center cursor-pointer hover:scale-105 transition transform animate-pulse">
+                <div class="bg-pink-500/20 p-4 rounded-full text-pink-500 mb-4"><i class="fa-solid fa-volume-high text-3xl"></i></div>
+                <h3 class="text-xl font-bold text-white mb-2">แตะเพื่อเปิดเสียง</h3>
+                <p class="text-gray-400 text-sm">ระบบปิดเสียงชั่วคราวเพื่อเล่นวิดีโอต่อเนื่อง</p>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full mt-16 text-left">
-            <div class="p-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl hover:bg-zinc-900 transition hover:border-zinc-700">
-                <div class="text-3xl mb-4 text-red-500"><i class="fa-brands fa-youtube"></i></div>
-                <h3 class="text-xl font-bold mb-2">YouTube Powered</h3>
-                <p class="text-gray-400 text-sm">ค้นหาและเล่นเพลงจาก YouTube ได้นับล้านเพลงทันที</p>
+        <header id="main-header" class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-16 bg-black/90 border-b border-zinc-800 transition-all duration-500">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-pink-500 to-orange-400 rounded-lg flex items-center justify-center shadow-lg">
+                    <i id="spin-icon" class="fa-solid fa-compact-disc text-white"></i>
+                </div>
+                <h1 class="font-bold text-lg tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 hidden md:block">NextJuke</h1>
             </div>
-            <div class="p-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl hover:bg-zinc-900 transition hover:border-zinc-700">
-                <div class="text-3xl mb-4 text-blue-500"><i class="fa-solid fa-qrcode"></i></div>
-                <h3 class="text-xl font-bold mb-2">เข้าใช้งานง่าย</h3>
-                <p class="text-gray-400 text-sm">เพื่อนสแกน QR Code แล้วเข้าร่วมได้เลย ไม่ต้องสมัครสมาชิก</p>
+            <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-700 text-xs font-mono text-gray-400">
+                <span id="status-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                <span id="status-text">OFFLINE</span>
             </div>
-            <div class="p-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl hover:bg-zinc-900 transition hover:border-zinc-700">
-                <div class="text-3xl mb-4 text-purple-500"><i class="fa-solid fa-users"></i></div>
-                <h3 class="text-xl font-bold mb-2">ระบบคิวเพลง</h3>
-                <p class="text-gray-400 text-sm">ทุกคนมีสิทธิ์เลือกเพลง โดยมี Master DJ คอยดูแลความเรียบร้อย</p>
+        </header>
+
+        <div class="flex-1 w-full h-full relative bg-black flex items-center justify-center overflow-hidden">
+            <div id="video-wrapper" class="w-full h-full relative transition-all duration-700">
+                <div id="youtube-player" class="w-full h-full pointer-events-none"></div>
+            </div>
+
+            <div id="buffering-indicator" class="absolute inset-0 z-10 flex items-center justify-center bg-black hidden">
+                <div class="flex flex-col items-center gap-3">
+                    <img id="buffer-thumb" src="" class="w-24 h-24 rounded-full animate-pulse blur-sm opacity-50 absolute" />
+                    <i class="fa-solid fa-spinner text-white text-4xl animate-spin z-10"></i>
+                    <p class="text-xs text-gray-400 z-10 font-mono mt-24">LOADING...</p>
+                </div>
+            </div>
+
+            <div id="countdown-overlay" class="absolute inset-0 z-40 bg-black flex items-center justify-center hidden">
+                <div class="text-center relative z-10">
+                    <div id="cd-number" class="text-[150px] font-black text-transparent bg-clip-text bg-gradient-to-br from-pink-500 to-orange-500 animate-pop leading-none">3</div>
+                    <div class="mt-8 space-y-2 animate-[fadeIn_0.5s]">
+                        <p class="text-gray-400 uppercase tracking-widest text-xs">Up Next</p>
+                        <h2 id="cd-title" class="text-2xl font-bold text-white max-w-2xl mx-auto line-clamp-2 px-4">Song Title</h2>
+                        <div class="flex items-center justify-center gap-2 text-sm text-pink-400 font-bold">
+                            <i class="fa-solid fa-user-astronaut"></i> <span id="cd-sender">User</span>
+                        </div>
+                    </div>
+                </div>
+                <img id="cd-bg" src="" class="absolute inset-0 w-full h-full object-cover opacity-20 blur-xl">
+            </div>
+
+            <div id="qr-screen" class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500">
+                <div class="flex flex-col items-center gap-6 p-8 rounded-3xl bg-zinc-900 border border-zinc-700 shadow-2xl animate-[fadeIn_0.5s] max-w-sm w-full">
+                    <h2 class="text-3xl font-bold text-center">Join Party</h2>
+                    <div class="p-4 bg-white rounded-2xl">
+                        <div id="qrcode"></div>
+                    </div>
+                    <div class="bg-black px-4 py-2 rounded-xl border border-zinc-800 flex gap-2 items-center w-full">
+                        <i class="fa-solid fa-link text-pink-500 shrink-0"></i>
+                        <span id="join-url" class="text-xs font-mono text-gray-400 truncate">Wait...</span>
+                    </div>
+                    <p class="text-gray-400 text-sm animate-pulse">สแกนเพื่อเริ่มเพิ่มเพลง</p>
+                </div>
+            </div>
+
+            <div id="now-playing-overlay" class="absolute inset-0 flex items-center justify-center z-30 pointer-events-none opacity-0 transition-all duration-500 translate-y-10">
+                <div class="bg-black/90 p-8 rounded-3xl border border-white/10 shadow-2xl flex flex-col items-center text-center max-w-lg mx-6 backdrop-blur-md">
+                    <img id="np-thumb" src="" class="w-40 h-40 rounded-2xl shadow-2xl mb-6 object-cover aspect-video bg-zinc-800" />
+                    <h2 id="np-title" class="text-2xl font-bold text-white mb-2 line-clamp-2">Title</h2>
+                    <div class="flex items-center gap-2 text-pink-400 text-sm font-bold uppercase tracking-wider">
+                        <i class="fa-solid fa-user-astronaut"></i> <span id="np-sender">User</span>
+                    </div>
+                </div>
             </div>
         </div>
-    </main>
 
-    <footer class="p-6 text-center text-gray-600 text-sm">
-        NextJuke © 2025 - Pure HTML Version
-    </footer>
+        <footer id="main-footer" class="fixed bottom-0 left-0 right-0 z-50 bg-black border-t border-zinc-800 h-16 flex items-center px-4 md:px-8 gap-4 transition-all duration-500">
+            <div class="flex items-center gap-2 shrink-0">
+                <button onclick="togglePlay()" class="text-white hover:text-pink-500 p-2 hover:scale-110 transition bg-white/10 rounded-full w-10 h-10 flex items-center justify-center">
+                    <i id="play-btn-icon" class="fa-solid fa-play ml-1"></i>
+                </button>
+                <button onclick="triggerNext()" class="text-gray-400 hover:text-white p-2 hover:scale-110 transition">
+                    <i class="fa-solid fa-forward-step"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 flex items-center gap-4">
+                <span id="time-curr" class="text-xs font-mono text-gray-500 w-10 text-right">0:00</span>
+                <div class="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden relative group">
+                    <div id="prog-bar" class="absolute inset-y-0 left-0 bg-pink-600 transition-all duration-300" style="width: 0%"></div>
+                    <input type="range" id="seek-slider" min="0" max="100" value="0" step="0.1" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer hover:opacity-100" oninput="handleSeek(this.value)" />
+                </div>
+                <span id="time-dur" class="text-xs font-mono text-gray-500 w-10">0:00</span>
+            </div>
+
+            <div class="flex items-center gap-2 border-l border-zinc-800 pl-4 shrink-0">
+                <button id="btn-fullscreen" onclick="toggleFullscreen()" class="text-gray-400 hover:text-white p-2 hidden">
+                    <i class="fa-solid fa-expand"></i>
+                </button>
+                <button onclick="openModal('settings-modal')" class="text-gray-400 hover:text-white p-2">
+                    <i class="fa-solid fa-cog"></i>
+                </button>
+            </div>
+        </footer>
+
+        <div id="settings-modal" class="fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+            <div class="bg-zinc-900 border border-white/10 w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+                <div class="p-4 border-b border-white/10 flex justify-between items-center bg-black/40">
+                    <h3 class="font-bold text-white">Menu</h3>
+                    <button onclick="closeModal('settings-modal')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times"></i></button>
+                </div>
+                <div class="flex border-b border-white/10 bg-black/20">
+                    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="flex-1 py-3 text-sm font-bold border-b-2 border-pink-500 text-white transition">Dashboard</button>
+                    <button onclick="switchTab('settings')" id="tab-settings" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition">Settings</button>
+                </div>
+                <div class="p-6 overflow-y-auto flex-1">
+                    <div id="view-dashboard" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-zinc-800/50 rounded-xl p-4 h-64 overflow-hidden flex flex-col">
+                            <h3 class="font-bold text-pink-500 mb-2">Queue (<span id="queue-count">0</span>)</h3>
+                            <div id="queue-list" class="overflow-y-auto flex-1 space-y-2 pr-1 custom-scrollbar text-sm"></div>
+                        </div>
+                        <div class="bg-zinc-800/50 rounded-xl p-4 h-64 overflow-hidden flex flex-col">
+                            <h3 class="font-bold text-blue-500 mb-2">Users (<span id="user-count">0</span>)</h3>
+                            <div id="user-list" class="overflow-y-auto flex-1 space-y-2 pr-1 custom-scrollbar text-sm"></div>
+                        </div>
+                    </div>
+                    <div id="view-settings" class="hidden space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div><h4 class="font-bold">Safe Mode (iOS)</h4><p class="text-xs text-gray-400">บังคับกดเปิดเสียงเมื่อเปลี่ยนเพลง</p></div>
+                            <button onclick="toggleSetting('reqInt')" id="btn-reqInt" class="w-12 h-6 rounded-full bg-green-500 relative transition"><div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-all"></div></button>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div><h4 class="font-bold">Crop to Fill</h4><p class="text-xs text-gray-400">ขยายวิดีโอให้เต็มจอ</p></div>
+                            <button onclick="toggleSetting('fit')" id="btn-fit" class="w-12 h-6 rounded-full bg-zinc-600 relative transition"><div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-all"></div></button>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div><h4 class="font-bold">Video Quality</h4><p class="text-xs text-gray-400">เลือกคุณภาพวิดีโอ</p></div>
+                            <select onchange="updateQuality(this.value)" id="sel-quality" class="bg-black border border-white/20 rounded px-2 py-1 text-xs">
+                                <option value="auto">Auto</option>
+                                <option value="hd720">High (HD)</option>
+                                <option value="medium">Medium</option>
+                                <option value="small">Low</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const peerConfig = { config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] } };
+        let player, peer, peerId;
+        let connections = [];
+        let isAppStarted = false;
+        
+        let state = {
+            queue: [],
+            currentSong: null,
+            users: [],
+            masterId: localStorage.getItem("nj_master_id") || null,
+            settings: {
+                reqInt: localStorage.getItem("nj_reqInt") !== "false",
+                fit: localStorage.getItem("nj_fit") === "true",
+                quality: localStorage.getItem("nj_quality") || "auto",
+            },
+        };
+
+        let isPlaying = false;
+        let isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        let hasInteracted = false;
+        let lastPlayedSongId = null; // Fix for title popup bug
+        let idleTimer;
+
+        // --- APP FLOW ---
+        function startApp() {
+            isAppStarted = true;
+            document.getElementById('landing-view').classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                document.getElementById('landing-view').style.display = 'none';
+                document.getElementById('player-view').classList.remove('hidden');
+                setTimeout(() => document.getElementById('player-view').classList.remove('opacity-0'), 100);
+            }, 700);
+
+            // Init Logic
+            initPlayer();
+            initPeer();
+            updateSettingsUI();
+            checkFullscreenSupport();
+            
+            document.addEventListener("mousemove", resetIdle);
+            document.addEventListener("touchstart", resetIdle);
+            resetIdle();
+        }
+
+        function checkFullscreenSupport() {
+            if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
+                document.getElementById('btn-fullscreen').classList.remove('hidden');
+            }
+        }
+
+        function initPeer() {
+            peer = new Peer(peerConfig);
+            peer.on("open", (id) => {
+                peerId = id;
+                document.getElementById("status-text").innerText = "ONLINE";
+                document.getElementById("status-text").classList.replace("text-gray-400", "text-green-500");
+                document.getElementById("status-dot").classList.replace("bg-red-500", "bg-green-500");
+
+                // Link to remote.html (assuming it's in the same folder)
+                const url = `${window.location.origin}/remote.html?host=${id}`;
+                document.getElementById("join-url").innerText = url;
+                new QRCode(document.getElementById("qrcode"), { text: url, width: 180, height: 180 });
+            });
+            peer.on("connection", (conn) => {
+                conn.on("open", () => { connections.push(conn); broadcastState(); });
+                conn.on("data", (data) => handleCommand(data, conn));
+                conn.on("close", () => (connections = connections.filter((c) => c !== conn)));
+            });
+        }
+
+        function initPlayer() {
+            // YouTube API is already loaded in head via script tag, waiting for ready
+            if(window.YT && window.YT.Player) onYouTubeIframeAPIReady();
+            else {
+                // Polling if needed, but script tag in head usually works
+                window.onYouTubeIframeAPIReady = () => {
+                   createPlayer();
+                };
+            }
+        }
+        
+        // Handle race condition if API loads before button click
+        function onYouTubeIframeAPIReady() {
+            if(isAppStarted) createPlayer();
+        }
+
+        function createPlayer() {
+            if(player) return;
+            player = new YT.Player("youtube-player", {
+                height: "100%", width: "100%",
+                playerVars: { autoplay: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, modestbranding: 1, rel: 0, playsinline: 1 },
+                events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange },
+            });
+        }
+
+        function onPlayerReady(event) {
+            if (state.settings.quality !== "auto") event.target.setPlaybackQuality(state.settings.quality);
+            event.target.mute();
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === 1) { // PLAYING
+                isPlaying = true;
+                document.getElementById("spin-icon").classList.add("animate-spin");
+                document.getElementById("play-btn-icon").classList.replace("fa-play", "fa-pause");
+                document.getElementById("buffering-indicator").classList.add("hidden");
+                document.getElementById("qr-screen").classList.add("opacity-0", "pointer-events-none");
+                
+                // Fix: Show title only once per song ID
+                if (state.currentSong && state.currentSong.id !== lastPlayedSongId) {
+                    lastPlayedSongId = state.currentSong.id;
+                    showNowPlaying();
+                }
+
+                checkAudioContext();
+            } else if (event.data === 2) { // PAUSED
+                isPlaying = false;
+                document.getElementById("spin-icon").classList.remove("animate-spin");
+                document.getElementById("play-btn-icon").classList.replace("fa-pause", "fa-play");
+            } else if (event.data === 3) { // BUFFERING
+                document.getElementById("buffering-indicator").classList.remove("hidden");
+            } else if (event.data === 0) { // ENDED
+                triggerNext();
+            }
+        }
+
+        function showNowPlaying() {
+            const np = document.getElementById("now-playing-overlay");
+            np.classList.remove("opacity-0", "translate-y-10");
+            setTimeout(() => np.classList.add("opacity-0", "translate-y-10"), 6000);
+        }
+
+        function checkAudioContext() {
+            if (!state.settings.reqInt) { hideInteraction(); player.unMute(); return; }
+            const isMuted = player.isMuted();
+            if (isIOS) {
+                if (isMuted) showInteraction(); else hideInteraction();
+            } else {
+                if (!hasInteracted && isMuted) showInteraction();
+                else { hideInteraction(); if (isMuted) player.unMute(); }
+            }
+        }
+
+        function showInteraction() { document.getElementById("interaction-overlay").classList.remove("hidden"); }
+        function hideInteraction() { document.getElementById("interaction-overlay").classList.add("hidden"); }
+        function handleUserInteraction() {
+            hasInteracted = true;
+            if (player) { player.unMute(); player.setVolume(100); player.playVideo(); }
+            hideInteraction();
+        }
+
+        function handleCommand(cmd, conn) {
+            switch (cmd.type) {
+                case "JOIN":
+                    const u = cmd.user;
+                    if (state.masterId === u.id || !state.masterId) {
+                        u.isMaster = true; state.masterId = u.id; localStorage.setItem("nj_master_id", u.id);
+                    }
+                    if (!state.users.find((x) => x.id === u.id)) {
+                        state.users.push(u);
+                        showToast(`${u.name} joined!`, "info");
+                    }
+                    renderDashboard(); broadcastState();
+                    break;
+                case "ADD_SONG":
+                    fetch(`https://noembed.com/embed?url=${cmd.url}`).then((r) => r.json()).then((d) => {
+                        if (!d.title) return;
+                        const videoId = extractVideoID(cmd.url);
+                        const song = {
+                            id: videoId, title: d.title,
+                            thumbnail: d.thumbnail_url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+                            sender: cmd.user.name,
+                        };
+                        state.queue.push(song);
+                        showToast(`Added: ${song.title}`, "success");
+                        renderDashboard(); broadcastState();
+                        if (!state.currentSong && state.queue.length === 1) triggerNext();
+                    });
+                    break;
+                case "PLAY": if (isMaster(cmd.user.id)) player.playVideo(); break;
+                case "PAUSE": if (isMaster(cmd.user.id)) player.pauseVideo(); break;
+                case "NEXT": if (isMaster(cmd.user.id)) triggerNext(); break;
+                case "GET_STATE": broadcastState(); break;
+            }
+        }
+
+        // --- CORE LOGIC ---
+        function triggerNext() {
+            if (state.queue.length > 0) {
+                const song = state.queue.shift();
+                
+                // Show Countdown
+                const cdOverlay = document.getElementById('countdown-overlay');
+                const cdNum = document.getElementById('cd-number');
+                
+                document.getElementById('cd-title').innerText = song.title;
+                document.getElementById('cd-sender').innerText = song.sender;
+                document.getElementById('cd-bg').src = song.thumbnail;
+                
+                cdOverlay.classList.remove('hidden');
+                
+                // Countdown Logic 3-2-1
+                let count = 3;
+                cdNum.innerText = count;
+                cdNum.classList.remove('animate-pop');
+                void cdNum.offsetWidth; // trigger reflow
+                cdNum.classList.add('animate-pop');
+
+                const timer = setInterval(() => {
+                    count--;
+                    if(count > 0) {
+                        cdNum.innerText = count;
+                        cdNum.classList.remove('animate-pop');
+                        void cdNum.offsetWidth; 
+                        cdNum.classList.add('animate-pop');
+                    } else {
+                        clearInterval(timer);
+                        cdOverlay.classList.add('hidden');
+                        playSong(song);
+                    }
+                }, 1000);
+            } else {
+                state.currentSong = null;
+                player.stopVideo();
+                document.getElementById("qr-screen").classList.remove("opacity-0", "pointer-events-none");
+                broadcastState();
+            }
+        }
+
+        function playSong(song) {
+            state.currentSong = song;
+            renderDashboard();
+            
+            // Set Now Playing Info
+            document.getElementById("np-title").innerText = song.title;
+            document.getElementById("np-thumb").src = song.thumbnail;
+            document.getElementById("np-sender").innerText = song.sender;
+            document.getElementById("buffer-thumb").src = song.thumbnail;
+
+            player.loadVideoById({
+                videoId: song.id,
+                suggestedQuality: state.settings.quality !== "auto" ? state.settings.quality : "large",
+            });
+            broadcastState();
+        }
+
+        function extractVideoID(url) {
+            const m = url.match(/^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/);
+            return m && m[7].length == 11 ? m[7] : false;
+        }
+        function isMaster(id) { return id === state.masterId; }
+        function broadcastState() {
+            const payload = { type: "UPDATE_STATE", queue: state.queue, users: state.users, masterId: state.masterId, currentId: state.currentSong ? state.currentSong.id : null };
+            connections.forEach((c) => { if (c.open) c.send(payload); });
+        }
+        function showToast(msg, type = "info") {
+            const t = document.createElement("div");
+            const color = type === "success" ? "bg-green-600" : "bg-blue-600";
+            t.className = `${color} text-white px-4 py-3 rounded-xl shadow-lg animate-[fadeIn_0.3s] text-sm font-bold flex items-center gap-2`;
+            t.innerHTML = `<i class="fa-solid fa-${type === "success" ? "check" : "info-circle"}"></i> ${msg}`;
+            document.getElementById("toast-container").appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        // --- UI & UTILS ---
+        function renderDashboard() {
+            const qList = document.getElementById("queue-list");
+            document.getElementById("queue-count").innerText = state.queue.length;
+            if (state.queue.length === 0) qList.innerHTML = '<div class="text-zinc-500 italic text-center py-4">No songs in queue</div>';
+            else {
+                qList.innerHTML = state.queue.map((s, i) => `
+                    <div class="flex justify-between items-center p-2 bg-black/40 rounded border border-white/5">
+                        <span class="truncate flex-1">${i + 1}. ${s.title}</span>
+                        <span class="text-[10px] text-gray-500 ml-2">${s.sender}</span>
+                    </div>`).join("");
+            }
+            const uList = document.getElementById("user-list");
+            document.getElementById("user-count").innerText = state.users.length;
+            uList.innerHTML = state.users.map((u) => `
+                <div class="flex justify-between items-center p-2 bg-black/40 rounded border border-white/5">
+                    <span class="text-sm ${u.id === state.masterId ? "text-pink-500 font-bold" : ""}">${u.name} ${u.id === state.masterId ? "👑" : ""}</span>
+                    ${u.id !== state.masterId ? `<button onclick="promoteUser('${u.id}')" class="text-[10px] bg-zinc-700 px-2 py-1 rounded hover:bg-zinc-600">Make DJ</button>` : ""}
+                </div>`).join("");
+        }
+        function promoteUser(id) {
+            state.masterId = id; localStorage.setItem("nj_master_id", id);
+            state.users.forEach((u) => (u.isMaster = u.id === id));
+            renderDashboard(); broadcastState(); showToast("DJ Changed!", "info");
+        }
+        function togglePlay() { if (isPlaying) player.pauseVideo(); else player.playVideo(); }
+        function handleSeek(val) { if (player) { const dur = player.getDuration(); player.seekTo((val / 100) * dur, true); } }
+        
+        setInterval(() => {
+            if (player && isPlaying) {
+                const c = player.getCurrentTime();
+                const d = player.getDuration();
+                document.getElementById("time-curr").innerText = formatTime(c);
+                document.getElementById("time-dur").innerText = formatTime(d);
+                document.getElementById("prog-bar").style.width = `${(c / d) * 100}%`;
+                document.getElementById("seek-slider").value = (c / d) * 100;
+            }
+        }, 1000);
+        function formatTime(s) { if (!s) return "0:00"; const m = Math.floor(s / 60); const sec = Math.floor(s % 60); return `${m}:${sec < 10 ? "0" : ""}${sec}`; }
+        function openModal(id) { document.getElementById(id).classList.remove("hidden"); }
+        function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+        function switchTab(tab) {
+            ["dashboard", "settings"].forEach((t) => {
+                document.getElementById(`view-${t}`).classList.add("hidden");
+                document.getElementById(`tab-${t}`).classList.replace("border-pink-500", "border-transparent");
+                document.getElementById(`tab-${t}`).classList.replace("text-white", "text-gray-500");
+            });
+            document.getElementById(`view-${tab}`).classList.remove("hidden");
+            document.getElementById(`tab-${tab}`).classList.replace("border-transparent", "border-pink-500");
+            document.getElementById(`tab-${tab}`).classList.replace("text-gray-500", "text-white");
+        }
+        function toggleSetting(key) { state.settings[key] = !state.settings[key]; localStorage.setItem(`nj_${key}`, state.settings[key]); updateSettingsUI(); }
+        function updateQuality(val) { state.settings.quality = val; localStorage.setItem("nj_quality", val); if (player) player.setPlaybackQuality(val); }
+        function updateSettingsUI() {
+            const ri = state.settings.reqInt;
+            const btnRi = document.getElementById("btn-reqInt");
+            btnRi.className = `w-12 h-6 rounded-full relative transition ${ri ? "bg-green-500" : "bg-zinc-600"}`;
+            btnRi.firstElementChild.className = `absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${ri ? "right-1" : "left-1"}`;
+
+            const fit = state.settings.fit;
+            const btnFit = document.getElementById("btn-fit");
+            btnFit.className = `w-12 h-6 rounded-full relative transition ${fit ? "bg-green-500" : "bg-zinc-600"}`;
+            btnFit.firstElementChild.className = `absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${fit ? "right-1" : "left-1"}`;
+
+            const wrap = document.getElementById("video-wrapper");
+            wrap.className = "";
+            if (fit) {
+                wrap.classList.add("absolute", "top-1/2", "left-1/2", "-translate-x-1/2", "-translate-y-1/2", "w-[100vw]", "h-[56.25vw]", "min-h-[100vh]", "min-w-[177.78vh]", "pointer-events-none");
+            } else {
+                wrap.className = "w-full h-full relative transition-all duration-700 flex items-center justify-center";
+            }
+            document.getElementById("sel-quality").value = state.settings.quality;
+        }
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen();
+        }
+        function resetIdle() {
+            document.getElementById("main-header").classList.remove("-translate-y-full", "opacity-0");
+            document.getElementById("main-footer").classList.remove("translate-y-full", "opacity-0");
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => {
+                if (document.getElementById("settings-modal").classList.contains("hidden") && isAppStarted) {
+                    document.getElementById("main-header").classList.add("-translate-y-full", "opacity-0");
+                    document.getElementById("main-footer").classList.add("translate-y-full", "opacity-0");
+                }
+            }, 3000);
+        }
+    </script>
 </body>
 </html>
