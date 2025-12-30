@@ -115,8 +115,8 @@ function initPeer() {
 
     new QRCode(document.getElementById("qrcode"), {
       text: url,
-      width: 180,
-      height: 180,
+      width: 160,
+      height: 160,
       colorDark: "#000000",
       colorLight: "#ffffff",
       correctLevel: QRCode.CorrectLevel.L,

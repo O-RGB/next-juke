@@ -21,6 +21,9 @@ body {
   cursor: pointer;
 }
 
+/* Safe Area Utilities (Full L R T B) */
+/* ใช้ตัวแปร env() เพื่อดึงค่าระยะปลอดภัยของหน้าจอ */
+/* Safe Area ล้วนๆ */
 .pt-safe {
   padding-top: calc(1rem + env(safe-area-inset-top)) !important;
 }
@@ -34,6 +37,24 @@ body {
   padding-right: calc(1rem + env(safe-area-inset-right)) !important;
 }
 
+/* แบบผสม Padding เดิม + Safe Area */
+/* Top & Bottom */
+.pt-safe-plus-2 {
+  padding-top: calc(1rem + env(safe-area-inset-top)) !important;
+} /* p-2 */
+.pb-safe-plus-6 {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+} /* p-6 */
+
+/* Left & Right */
+.pl-safe-plus-4 {
+  padding-left: calc(1rem + env(safe-area-inset-left)) !important;
+} /* px-4 */
+.pr-safe-plus-4 {
+  padding-right: calc(1rem + env(safe-area-inset-right)) !important;
+} /* px-4 */
+
+/* Scrollbar Customization */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
