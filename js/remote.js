@@ -28,6 +28,11 @@ function handleJoin() {
 }
 
 function initPeer() {
+  if (peer) {
+    peer.destroy();
+    peer = null;
+  }
+
   document.getElementById("login-screen").classList.add("hidden");
   document.getElementById("remote-ui").classList.remove("hidden");
 
@@ -139,7 +144,6 @@ function addSong() {
   showToast("ส่งเพลงแล้ว!");
 }
 
-// Logic แสดง Preview เพลง
 const inp = document.getElementById("url-input");
 inp.addEventListener("input", (e) => {
   const val = e.target.value;
@@ -160,7 +164,6 @@ inp.addEventListener("input", (e) => {
   }
 });
 
-// Magic Paste Function
 async function pasteFromClipboard() {
   try {
     const text = await navigator.clipboard.readText();
@@ -187,4 +190,24 @@ function showToast(msg) {
   document.getElementById("toast-msg").innerText = msg;
   t.classList.remove("opacity-0");
   setTimeout(() => t.classList.add("opacity-0"), 2000);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    checkAndReconnect();
+  }
+});
+
+function checkAndReconnect() {
+  if (!peer || peer.disconnected || peer.destroyed || (conn && !conn.open)) {
+    console.log("Detecting disconnection... Reconnecting...");
+    setStatus(
+      "กำลังเชื่อมต่อใหม่...",
+      "text-yellow-500",
+      "bg-yellow-500/10",
+      "border-yellow-500"
+    );
+
+    initPeer();
+  }
 }

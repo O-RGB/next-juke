@@ -1,5 +1,3 @@
-// js/host.js - Full Code with iOS Fixes
-
 let wakeLock = null;
 let player, peer, peerId;
 let connections = [];
@@ -170,7 +168,6 @@ function createPlayer() {
 }
 
 function onPlayerReady(event) {
-  // [iOS FIX] Force mute and play immediately
   event.target.mute();
   if (state.settings.quality !== "auto")
     event.target.setPlaybackQuality(state.settings.quality);
@@ -179,7 +176,6 @@ function onPlayerReady(event) {
 
 function onPlayerStateChange(event) {
   if (event.data === 1) {
-    // PLAYING
     isPlaying = true;
     requestWakeLock();
     if (state.currentSong) updateMediaSession(state.currentSong);
@@ -189,7 +185,6 @@ function onPlayerStateChange(event) {
       .classList.replace("fa-play", "fa-pause");
     document.getElementById("buffering-indicator").classList.add("hidden");
 
-    // Fix QR hiding logic
     document
       .getElementById("qr-screen")
       .classList.add("opacity-0", "pointer-events-none");
@@ -200,16 +195,13 @@ function onPlayerStateChange(event) {
     }
     checkAudioContext();
   } else if (event.data === 2) {
-    // PAUSED
     isPlaying = false;
     document
       .getElementById("play-btn-icon")
       .classList.replace("fa-pause", "fa-play");
   } else if (event.data === 3) {
-    // BUFFERING
     document.getElementById("buffering-indicator").classList.remove("hidden");
   } else if (event.data === 0) {
-    // ENDED
     triggerNext();
   }
 }
@@ -241,7 +233,7 @@ function checkAudioContext() {
 
 function showInteraction(text = "แตะเพื่อเปิดเสียง") {
   const overlay = document.getElementById("interaction-overlay");
-  // หา element h3 ใน overlay เพื่อเปลี่ยนข้อความ
+
   const textEl = overlay.querySelector("h3");
   if (textEl) textEl.innerText = text;
 
@@ -251,18 +243,21 @@ function hideInteraction() {
   document.getElementById("interaction-overlay").classList.add("hidden");
 }
 
-// 3. ปรับปรุง handleUserInteraction ให้บังคับเล่นแน่นอน
-function handleUserInteraction() {
+function handleUserInteraction(event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
   hasInteracted = true;
   if (player) {
-    // ลำดับสำคัญมากสำหรับ iOS: Mute -> Play -> Unmute
     player.mute();
     player.playVideo();
 
     setTimeout(() => {
       player.unMute();
       player.setVolume(100);
-    }, 500); // เว้นจังหวะนิดนึงให้ Video Engine ทำงาน
+    }, 500);
   }
   hideInteraction();
 }
@@ -336,7 +331,6 @@ function triggerNext() {
     const cdOverlay = document.getElementById("countdown-overlay");
     const cdNum = document.getElementById("cd-number");
 
-    // Fix QR hiding logic
     document
       .getElementById("qr-screen")
       .classList.add("opacity-0", "pointer-events-none");
@@ -387,21 +381,18 @@ function playSong(song) {
   document.getElementById("np-thumb").src = song.thumbnail;
   document.getElementById("np-sender").innerText = song.sender;
 
-  // โหลดวิดีโอ
   player.loadVideoById({
     videoId: song.id,
     suggestedQuality:
       state.settings.quality !== "auto" ? state.settings.quality : "large",
   });
 
-  // [NEW CODE] iOS Fix: เช็คว่าถ้าเป็น iOS แล้ววิดีโอไม่เริ่มเล่นเอง ให้เด้งปุ่มขึ้นมา
   if (isIOS) {
-    // รอ 1.5 วินาที เพื่อดูว่า Auto-play ทำงานไหม
     setTimeout(() => {
       const pState = player.getPlayerState();
-      // State: -1 (Unstarted), 5 (Cued), 2 (Paused) = แปลว่ามันค้าง
+
       if (pState === -1 || pState === 5 || pState === 2) {
-        showInteraction("แตะเพื่อเริ่มปาร์ตี้"); // เปลี่ยนข้อความให้เหมาะสม
+        showInteraction("แตะเพื่อเริ่มปาร์ตี้");
       }
     }, 1500);
   }
