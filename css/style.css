@@ -16,7 +16,7 @@ body {
 /* Safe Area Utilities (Full L R T B) */
 /* ใช้ตัวแปร env() เพื่อดึงค่าระยะปลอดภัยของหน้าจอ */
 
-/* เฉพาะ Safe Area ล้วนๆ */
+/* Safe Area ล้วนๆ */
 .pt-safe { padding-top: env(safe-area-inset-top); }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 .pl-safe { padding-left: env(safe-area-inset-left); }

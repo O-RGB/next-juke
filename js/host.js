@@ -1,4 +1,4 @@
-// js/host.js - Full Code with iOS Fixes
+// js/host.js
 
 let wakeLock = null;
 let player, peer, peerId;
@@ -27,13 +27,10 @@ async function requestWakeLock() {
   try {
     if ("wakeLock" in navigator) {
       wakeLock = await navigator.wakeLock.request("screen");
-      console.log("Screen Wake Lock active");
-      wakeLock.addEventListener("release", () => {
-        console.log("Screen Wake Lock released");
-      });
+      wakeLock.addEventListener("release", () => {});
     }
   } catch (err) {
-    console.error(`Wake Lock Error: ${err.name}, ${err.message}`);
+    console.error("Wake Lock failed:", err);
   }
 }
 
@@ -50,16 +47,19 @@ function updateMediaSession(song) {
         { src: song.thumbnail, sizes: "512x512", type: "image/jpeg" },
       ],
     });
-    navigator.mediaSession.setActionHandler("play", () => {
-      if (player) player.playVideo();
-    });
-    navigator.mediaSession.setActionHandler("pause", () => {
-      if (player) player.pauseVideo();
-    });
+    navigator.mediaSession.setActionHandler(
+      "play",
+      () => player && player.playVideo()
+    );
+    navigator.mediaSession.setActionHandler(
+      "pause",
+      () => player && player.pauseVideo()
+    );
     navigator.mediaSession.setActionHandler("nexttrack", () => triggerNext());
-    navigator.mediaSession.setActionHandler("stop", () => {
-      if (player) player.stopVideo();
-    });
+    navigator.mediaSession.setActionHandler(
+      "stop",
+      () => player && player.stopVideo()
+    );
   }
 }
 
@@ -105,7 +105,6 @@ function initPeer() {
     peerId = id;
     const statusText = document.getElementById("status-text");
     const statusDot = document.getElementById("status-dot");
-
     statusText.innerText = "ONLINE";
     statusText.classList.replace("text-gray-400", "text-green-500");
     statusDot.classList.replace("bg-red-500", "bg-green-500");
@@ -152,15 +151,17 @@ function createPlayer() {
     height: "100%",
     width: "100%",
     playerVars: {
-      autoplay: 1,
+      autoplay: 1, // สั่งเล่น
+      mute: 1, // [สำคัญ] สั่ง Mute ตั้งแต่ Config เพื่อให้ iOS ยอม Autoplay
       controls: 0,
       disablekb: 1,
       fs: 0,
       iv_load_policy: 3,
       modestbranding: 1,
       rel: 0,
-      playsinline: 1,
+      playsinline: 1, // จำเป็นสำหรับ iOS
       vq: "small",
+      origin: window.location.origin, // เพื่อความปลอดภัยและ Policy ของ Browser
     },
     events: {
       onReady: onPlayerReady,
@@ -170,14 +171,24 @@ function createPlayer() {
 }
 
 function onPlayerReady(event) {
-  // [iOS FIX] Force mute and play immediately
+  // ย้ำคำสั่งอีกครั้งเมื่อโหลดเสร็จ
   event.target.mute();
   if (state.settings.quality !== "auto")
     event.target.setPlaybackQuality(state.settings.quality);
+
+  // สั่งเล่นทันที
   event.target.playVideo();
 }
 
 function onPlayerStateChange(event) {
+  // [iOS Fix] ถ้าสถานะเป็น Unstarted (-1) หรือ Cued (5) ให้บังคับเล่นอีกที
+  if (event.data === -1 || event.data === 5) {
+    if (!isPlaying) {
+      event.target.mute();
+      event.target.playVideo();
+    }
+  }
+
   if (event.data === 1) {
     // PLAYING
     isPlaying = true;
@@ -189,7 +200,7 @@ function onPlayerStateChange(event) {
       .classList.replace("fa-play", "fa-pause");
     document.getElementById("buffering-indicator").classList.add("hidden");
 
-    // Fix QR hiding logic
+    // ซ่อน QR Code ทันทีเมื่อเล่น
     document
       .getElementById("qr-screen")
       .classList.add("opacity-0", "pointer-events-none");
@@ -227,15 +238,13 @@ function checkAudioContext() {
     return;
   }
   const isMuted = player.isMuted();
-  if (isIOS) {
-    if (isMuted) showInteraction();
-    else hideInteraction();
+
+  // ตรวจสอบว่าเงียบจริงไหม (บางที isMuted เป็นเท็จแต่เสียงไม่ออกเพราะ Browser Policy)
+  // แต่เราจะใช้ isMuted เป็นหลักก่อน
+  if (isMuted || !hasInteracted) {
+    showInteraction();
   } else {
-    if (!hasInteracted && isMuted) showInteraction();
-    else {
-      hideInteraction();
-      if (isMuted) player.unMute();
-    }
+    hideInteraction();
   }
 }
 
@@ -251,10 +260,17 @@ function handleUserInteraction() {
   if (player) {
     player.unMute();
     player.setVolume(100);
-    player.playVideo();
+    // ถ้ามัน Pause อยู่ให้เล่นต่อด้วย
+    if (player.getPlayerState() !== 1) {
+      player.playVideo();
+    }
   }
   hideInteraction();
 }
+
+// ... ส่วนที่เหลือเหมือนเดิม (handleCommand, triggerNext, etc.) ...
+// เพื่อความกระชับ ขอละส่วนที่ไม่เปลี่ยนไว้
+// (ถ้าต้องการโค้ดเต็มทั้งหมด บอกได้ครับ แต่ส่วนสำคัญคือด้านบน)
 
 function handleCommand(cmd, conn) {
   switch (cmd.type) {
@@ -309,8 +325,7 @@ function handleCommand(cmd, conn) {
     case "SEEK":
       if (isMaster(cmd.user.id) && player) {
         const ct = player.getCurrentTime();
-        const newTime = ct + (cmd.amount || 0);
-        player.seekTo(newTime, true);
+        player.seekTo(ct + (cmd.amount || 0), true);
       }
       break;
     case "GET_STATE":
@@ -325,7 +340,7 @@ function triggerNext() {
     const cdOverlay = document.getElementById("countdown-overlay");
     const cdNum = document.getElementById("cd-number");
 
-    // Fix QR hiding logic
+    // ซ่อน QR Code ทันที
     document
       .getElementById("qr-screen")
       .classList.add("opacity-0", "pointer-events-none");
@@ -351,10 +366,8 @@ function triggerNext() {
   } else {
     state.currentSong = null;
     player.stopVideo();
-
     const headerTitle = document.getElementById("header-song-title");
     if (headerTitle) headerTitle.classList.add("hidden");
-
     document
       .getElementById("qr-screen")
       .classList.remove("opacity-0", "pointer-events-none");
@@ -419,7 +432,6 @@ function showToast(msg, type = "info") {
 function renderDashboard() {
   const qList = document.getElementById("queue-list");
   document.getElementById("queue-count").innerText = state.queue.length;
-
   if (state.queue.length === 0) {
     qList.innerHTML =
       '<div class="text-zinc-600 text-xs italic text-center py-4">No songs in queue</div>';
@@ -427,16 +439,15 @@ function renderDashboard() {
     qList.innerHTML = state.queue
       .map(
         (s, i) => `
-            <div class="flex justify-between items-center p-2 bg-zinc-800/30 rounded border border-white/5 text-xs">
-                <span class="truncate flex-1 text-gray-300">${i + 1}. ${
+        <div class="flex justify-between items-center p-2 bg-zinc-800/30 rounded border border-white/5 text-xs">
+            <span class="truncate flex-1 text-gray-300">${i + 1}. ${
           s.title
         }</span>
-                <span class="text-[10px] text-gray-500 ml-2">${s.sender}</span>
-            </div>`
+            <span class="text-[10px] text-gray-500 ml-2">${s.sender}</span>
+        </div>`
       )
       .join("");
   }
-
   const uList = document.getElementById("user-list");
   document.getElementById("user-count").innerText = state.users.length;
   uList.innerHTML = state.users
@@ -498,13 +509,11 @@ function openModal(id) {
   void el.offsetWidth;
   el.classList.remove("opacity-0");
 }
-
 function closeModal(id) {
   const el = document.getElementById(id);
   el.classList.add("opacity-0");
   setTimeout(() => el.classList.add("hidden"), 300);
 }
-
 function switchTab(tab) {
   ["dashboard", "settings"].forEach((t) => {
     document.getElementById(`view-${t}`).classList.add("hidden");
@@ -517,13 +526,11 @@ function switchTab(tab) {
   activeBtn.classList.replace("border-transparent", "border-red-600");
   activeBtn.classList.replace("text-gray-500", "text-white");
 }
-
 function toggleSetting(key) {
   state.settings[key] = !state.settings[key];
   localStorage.setItem(`nj_${key}`, state.settings[key]);
   updateSettingsUI();
 }
-
 function updateQuality(val) {
   state.settings.quality = val;
   localStorage.setItem("nj_quality", val);
@@ -536,7 +543,6 @@ function updateQuality(val) {
     });
   }
 }
-
 function updateSettingsUI() {
   const setBtnState = (id, isActive) => {
     const btn = document.getElementById(id);
@@ -547,10 +553,8 @@ function updateSettingsUI() {
       isActive ? "translate-x-5" : "translate-x-1"
     }`;
   };
-
   setBtnState("btn-reqInt", state.settings.reqInt);
   setBtnState("btn-fit", state.settings.fit);
-
   const wrap = document.getElementById("video-wrapper");
   if (state.settings.fit) {
     wrap.className =
@@ -561,18 +565,15 @@ function updateSettingsUI() {
   }
   document.getElementById("sel-quality").value = state.settings.quality;
 }
-
 function toggleFullscreen() {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen();
   else if (document.exitFullscreen) document.exitFullscreen();
 }
-
 function resetIdle() {
   const header = document.getElementById("main-header");
   const footer = document.getElementById("main-footer");
   header.classList.remove("opacity-0-force");
   footer.classList.remove("opacity-0-force");
-
   clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
     if (
@@ -585,12 +586,11 @@ function resetIdle() {
     }
   }, 3000);
 }
-
 function copyJoinLink() {
   const link = document.getElementById("join-url").href;
   if (link && link !== "#") {
-    navigator.clipboard.writeText(link).then(() => {
-      showToast("Link Copied!", "success");
-    });
+    navigator.clipboard
+      .writeText(link)
+      .then(() => showToast("Link Copied!", "success"));
   }
 }
