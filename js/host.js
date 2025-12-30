@@ -1,3 +1,8 @@
+// js/host.js - Full Code with Background Play Support
+
+// [ADD 1] ประกาศตัวแปร Wake Lock
+let wakeLock = null;
+
 let player, peer, peerId;
 let connections = [];
 let isAppStarted = false;
@@ -19,6 +24,57 @@ let isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 let hasInteracted = false;
 let lastPlayedSongId = null;
 let idleTimer;
+
+// [ADD 2] ฟังก์ชันขอ Wake Lock (ป้องกันจอดับ)
+async function requestWakeLock() {
+  try {
+    if ("wakeLock" in navigator) {
+      wakeLock = await navigator.wakeLock.request("screen");
+      console.log("Screen Wake Lock active");
+      wakeLock.addEventListener("release", () => {
+        console.log("Screen Wake Lock released");
+      });
+    }
+  } catch (err) {
+    console.error(`Wake Lock Error: ${err.name}, ${err.message}`);
+  }
+}
+
+// [ADD 3] ฟังก์ชันตั้งค่า Media Session (โชว์ปกเพลงตอน Lock Screen)
+function updateMediaSession(song) {
+  if ("mediaSession" in navigator && song) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: song.title,
+      artist: `Requested by ${song.sender}`,
+      album: "NextCast Party",
+      artwork: [
+        { src: song.thumbnail, sizes: "96x96", type: "image/jpeg" },
+        { src: song.thumbnail, sizes: "128x128", type: "image/jpeg" },
+        { src: song.thumbnail, sizes: "192x192", type: "image/jpeg" },
+        { src: song.thumbnail, sizes: "512x512", type: "image/jpeg" },
+      ],
+    });
+
+    // เพิ่มปุ่มควบคุม
+    navigator.mediaSession.setActionHandler("play", () => {
+      if (player) player.playVideo();
+    });
+    navigator.mediaSession.setActionHandler("pause", () => {
+      if (player) player.pauseVideo();
+    });
+    navigator.mediaSession.setActionHandler("nexttrack", () => triggerNext());
+    navigator.mediaSession.setActionHandler("stop", () => {
+      if (player) player.stopVideo();
+    });
+  }
+}
+
+// [ADD 4] กู้คืน Wake Lock เมื่อสลับหน้าจอกลับมา
+document.addEventListener("visibilitychange", async () => {
+  if (wakeLock !== null && document.visibilityState === "visible") {
+    await requestWakeLock();
+  }
+});
 
 function startApp() {
   isAppStarted = true;
@@ -130,6 +186,11 @@ function onPlayerStateChange(event) {
   if (event.data === 1) {
     // PLAYING
     isPlaying = true;
+
+    // [ADD 5] เรียกใช้ Wake Lock และ Media Session เมื่อเพลงเล่น
+    requestWakeLock();
+    if (state.currentSong) updateMediaSession(state.currentSong);
+
     document
       .getElementById("play-btn-icon")
       .classList.replace("fa-play", "fa-pause");
@@ -299,6 +360,10 @@ function triggerNext() {
 
 function playSong(song) {
   state.currentSong = song;
+
+  // [ADD 6] อัปเดตข้อมูล Media Session (Lock Screen Info)
+  updateMediaSession(song);
+
   renderDashboard();
 
   document.getElementById("np-title").innerText = song.title;
