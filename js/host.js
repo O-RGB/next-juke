@@ -239,19 +239,30 @@ function checkAudioContext() {
   }
 }
 
-function showInteraction() {
-  document.getElementById("interaction-overlay").classList.remove("hidden");
+function showInteraction(text = "แตะเพื่อเปิดเสียง") {
+  const overlay = document.getElementById("interaction-overlay");
+  // หา element h3 ใน overlay เพื่อเปลี่ยนข้อความ
+  const textEl = overlay.querySelector("h3");
+  if (textEl) textEl.innerText = text;
+
+  overlay.classList.remove("hidden");
 }
 function hideInteraction() {
   document.getElementById("interaction-overlay").classList.add("hidden");
 }
 
+// 3. ปรับปรุง handleUserInteraction ให้บังคับเล่นแน่นอน
 function handleUserInteraction() {
   hasInteracted = true;
   if (player) {
-    player.unMute();
-    player.setVolume(100);
+    // ลำดับสำคัญมากสำหรับ iOS: Mute -> Play -> Unmute
+    player.mute();
     player.playVideo();
+
+    setTimeout(() => {
+      player.unMute();
+      player.setVolume(100);
+    }, 500); // เว้นจังหวะนิดนึงให้ Video Engine ทำงาน
   }
   hideInteraction();
 }
@@ -361,7 +372,6 @@ function triggerNext() {
     broadcastState();
   }
 }
-
 function playSong(song) {
   state.currentSong = song;
   updateMediaSession(song);
@@ -377,11 +387,25 @@ function playSong(song) {
   document.getElementById("np-thumb").src = song.thumbnail;
   document.getElementById("np-sender").innerText = song.sender;
 
+  // โหลดวิดีโอ
   player.loadVideoById({
     videoId: song.id,
     suggestedQuality:
       state.settings.quality !== "auto" ? state.settings.quality : "large",
   });
+
+  // [NEW CODE] iOS Fix: เช็คว่าถ้าเป็น iOS แล้ววิดีโอไม่เริ่มเล่นเอง ให้เด้งปุ่มขึ้นมา
+  if (isIOS) {
+    // รอ 1.5 วินาที เพื่อดูว่า Auto-play ทำงานไหม
+    setTimeout(() => {
+      const pState = player.getPlayerState();
+      // State: -1 (Unstarted), 5 (Cued), 2 (Paused) = แปลว่ามันค้าง
+      if (pState === -1 || pState === 5 || pState === 2) {
+        showInteraction("แตะเพื่อเริ่มปาร์ตี้"); // เปลี่ยนข้อความให้เหมาะสม
+      }
+    }, 1500);
+  }
+
   broadcastState();
 }
 
