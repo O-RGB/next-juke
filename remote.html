@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NextJuke Remote</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { background-color: #0f0f11; color: white; -webkit-tap-highlight-color: transparent; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden font-sans">
+
+    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-2 rounded-full shadow-lg z-50 transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-4"></div>
+
+    <div id="login-screen" class="fixed inset-0 z-50 bg-[#0f0f11] flex flex-col items-center justify-center p-6">
+        <div class="w-full max-w-sm bg-white/10 backdrop-blur-lg p-8 rounded-3xl border border-white/10 text-center space-y-6">
+            <h1 class="text-2xl font-bold text-white">เข้าร่วมปาร์ตี้</h1>
+            <input id="username-input" type="text" placeholder="ใส่ชื่อของคุณ" class="w-full bg-black/40 border border-white/20 p-4 rounded-xl text-center text-white outline-none focus:border-green-500 transition">
+            <button onclick="handleJoin()" class="w-full bg-green-600 text-white p-4 rounded-xl font-bold shadow-lg shadow-green-600/20 active:scale-95 transition">
+                เข้าห้อง
+            </button>
+            <p id="error-msg" class="text-red-500 text-xs"></p>
+        </div>
+    </div>
+
+    <div id="remote-ui" class="flex-1 flex flex-col hidden">
+        <div class="shrink-0 p-4 flex justify-between items-center bg-black/20 backdrop-blur-md border-b border-white/5">
+            <div class="flex items-center gap-3">
+                <div id="user-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-orange-500 flex items-center justify-center font-bold text-lg shadow-inner border border-white/10">
+                    ?
+                </div>
+                <div>
+                    <div id="user-name" class="font-bold text-sm leading-tight">-</div>
+                    <div id="user-role" class="text-[10px] text-gray-400 font-mono">ผู้ร่วมงาน</div>
+                </div>
+            </div>
+            <div id="status-badge" class="text-[10px] px-2 py-1 rounded-full border bg-red-500/10 border-red-500 text-red-500">
+                Wait...
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
+            <div class="bg-white/5 p-4 rounded-2xl border border-white/10 space-y-3">
+                <div class="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    <i class="fa-brands fa-youtube text-red-500 text-lg"></i> ขอเพลง (YouTube)
+                </div>
+                <div class="flex gap-2">
+                    <input id="url-input" type="text" placeholder="วางลิงก์ YouTube ที่นี่..." class="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-pink-500 outline-none transition">
+                    <button onclick="addSong()" id="add-btn" class="w-12 flex items-center justify-center rounded-xl bg-white/10 text-gray-500 transition" disabled>
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+                <div id="preview-box" class="flex gap-3 bg-black/30 p-2 rounded-lg border border-white/5 hidden animate-[fadeIn_0.3s]">
+                    <img id="prev-img" src="" class="w-12 h-9 object-cover rounded">
+                    <div class="flex-1 min-w-0 flex flex-col justify-center">
+                        <p id="prev-title" class="text-xs font-bold truncate text-white"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="master-controls" class="hidden grid grid-cols-2 gap-3 animate-[fadeIn_0.5s]">
+                <button onclick="sendAction('PLAY')" class="bg-zinc-800 hover:bg-zinc-700 p-6 rounded-2xl flex flex-col items-center gap-2 transition active:scale-95 border border-white/5">
+                    <i class="fa-solid fa-play text-green-400 text-2xl"></i> <span class="text-xs font-bold">เล่น</span>
+                </button>
+                <button onclick="sendAction('PAUSE')" class="bg-zinc-800 hover:bg-zinc-700 p-6 rounded-2xl flex flex-col items-center gap-2 transition active:scale-95 border border-white/5">
+                    <i class="fa-solid fa-pause text-yellow-400 text-2xl"></i> <span class="text-xs font-bold">หยุด</span>
+                </button>
+                <button onclick="sendAction('NEXT')" class="col-span-2 bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg active:scale-95 transition">
+                    <i class="fa-solid fa-forward-step"></i> เล่นเพลงถัดไป
+                </button>
+            </div>
+
+            <div id="non-master-msg" class="flex-1 flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-white/5 rounded-2xl p-6">
+                <p class="text-sm">รอ Master DJ ควบคุมเพลง</p>
+            </div>
+        </div>
+
+        <div class="shrink-0 p-4 pb-8 bg-black/40 backdrop-blur-md border-t border-white/5 grid grid-cols-2 gap-4">
+            <button onclick="document.getElementById('queue-modal').classList.remove('hidden')" class="bg-white/10 hover:bg-white/20 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition">
+                <i class="fa-solid fa-list"></i> คิวเพลง (<span id="q-count-btn">0</span>)
+            </button>
+            <button id="stop-btn" onclick="sendAction('STOP')" class="hidden bg-red-500/10 text-red-400 hover:bg-red-500/20 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition">
+                <i class="fa-solid fa-stop"></i> จบปาร์ตี้
+            </button>
+        </div>
+    </div>
+
+    <div id="queue-modal" class="fixed inset-0 z-[60] bg-black/90 hidden flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-white/10 w-full max-w-md rounded-2xl flex flex-col max-h-[70vh]">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center">
+                <h3 class="font-bold">รายการคิวเพลง</h3>
+                <button onclick="document.getElementById('queue-modal').classList.add('hidden')" class="text-gray-400"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div id="queue-list-modal" class="overflow-y-auto p-4 space-y-3">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const hostId = urlParams.get('host');
+        const peerConfig = { config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] } };
+
+        let peer, conn, user;
+        let masterId = null;
+
+        // --- INIT ---
+        window.onload = () => {
+            if(!hostId) {
+                document.getElementById('error-msg').innerText = "ไม่พบ Host ID (กรุณาสแกน QR Code ใหม่)";
+                return;
+            }
+            const saved = localStorage.getItem(`nj_user_${hostId}`);
+            if(saved) {
+                const u = JSON.parse(saved);
+                document.getElementById('username-input').value = u.name;
+                // Auto join if saved
+                user = u;
+                initPeer();
+            }
+        };
+
+        function handleJoin() {
+            const name = document.getElementById('username-input').value.trim();
+            if(!name) return;
+            user = { id: crypto.randomUUID(), name: name, isMaster: false };
+            localStorage.setItem(`nj_user_${hostId}`, JSON.stringify(user));
+            initPeer();
+        }
+
+        function initPeer() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('remote-ui').classList.remove('hidden');
+            
+            // Render User Info
+            document.getElementById('user-name').innerText = user.name;
+            document.getElementById('user-avatar').innerText = user.name[0].toUpperCase();
+
+            // Connect
+            peer = new Peer(peerConfig);
+            peer.on('open', () => {
+                setStatus('กำลังเชื่อมต่อ...', 'text-yellow-500', 'bg-yellow-500/10', 'border-yellow-500');
+                conn = peer.connect(hostId);
+                
+                conn.on('open', () => {
+                    setStatus('เชื่อมต่อแล้ว', 'text-green-500', 'bg-green-500/10', 'border-green-500');
+                    conn.send({ type: 'JOIN', user: user });
+                    conn.send({ type: 'GET_STATE' });
+                });
+
+                conn.on('data', (data) => {
+                    if(data.type === 'UPDATE_STATE') updateState(data);
+                });
+
+                conn.on('close', () => setStatus('หลุดการเชื่อมต่อ', 'text-red-500', 'bg-red-500/10', 'border-red-500'));
+            });
+        }
+
+        function setStatus(text, textColor, bgColor, borderColor) {
+            const b = document.getElementById('status-badge');
+            b.innerText = text;
+            b.className = `text-[10px] px-2 py-1 rounded-full border ${textColor} ${bgColor} ${borderColor}`;
+        }
+
+        // --- LOGIC ---
+        function updateState(data) {
+            masterId = data.masterId;
+            const isMaster = (user.id === masterId);
+            
+            // Master Controls Visibility
+            if(isMaster) {
+                document.getElementById('master-controls').classList.remove('hidden');
+                document.getElementById('non-master-msg').classList.add('hidden');
+                document.getElementById('stop-btn').classList.remove('hidden');
+                document.getElementById('user-role').innerText = "👑 DJ MASTER";
+            } else {
+                document.getElementById('master-controls').classList.add('hidden');
+                document.getElementById('non-master-msg').classList.remove('hidden');
+                document.getElementById('stop-btn').classList.add('hidden');
+                document.getElementById('user-role').innerText = "ผู้ร่วมงาน";
+            }
+
+            // Update Queue
+            document.getElementById('q-count-btn').innerText = data.queue.length;
+            const qList = document.getElementById('queue-list-modal');
+            if(data.queue.length === 0) {
+                qList.innerHTML = '<div class="text-center text-gray-500">ยังไม่มีเพลงในคิว</div>';
+            } else {
+                qList.innerHTML = data.queue.map((s,i) => `
+                    <div class="flex gap-3 items-center p-3 border-b border-white/5">
+                        <span class="text-gray-500 font-mono text-xs w-6">${i+1}</span>
+                        <img src="${s.thumbnail}" class="w-10 h-10 rounded object-cover opacity-70">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-medium text-white truncate">${s.title}</div>
+                            <div class="text-xs text-gray-500">โดย ${s.sender}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // --- ACTIONS ---
+        function sendAction(type) {
+            if(conn && conn.open) conn.send({ type, user });
+        }
+
+        function addSong() {
+            const url = document.getElementById('url-input').value;
+            if(!url) return;
+            conn.send({ type: 'ADD_SONG', url, user });
+            document.getElementById('url-input').value = "";
+            document.getElementById('preview-box').classList.add('hidden');
+            document.getElementById('add-btn').disabled = true;
+            document.getElementById('add-btn').classList.remove('bg-pink-500', 'text-white');
+            
+            showToast('ส่งเพลงแล้ว!');
+        }
+
+        // Preview Logic
+        const inp = document.getElementById('url-input');
+        inp.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if(val.includes('youtu')) {
+                fetch(`https://noembed.com/embed?url=${val}`)
+                    .then(r=>r.json())
+                    .then(d => {
+                        if(d.title) {
+                            document.getElementById('preview-box').classList.remove('hidden');
+                            document.getElementById('prev-img').src = d.thumbnail_url;
+                            document.getElementById('prev-title').innerText = d.title;
+                            
+                            const btn = document.getElementById('add-btn');
+                            btn.disabled = false;
+                            btn.classList.add('bg-pink-500', 'text-white');
+                            btn.classList.remove('bg-white/10', 'text-gray-500');
+                        }
+                    });
+            } else {
+                document.getElementById('preview-box').classList.add('hidden');
+            }
+        });
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.remove('opacity-0', '-translate-y-4');
+            setTimeout(() => t.classList.add('opacity-0', '-translate-y-4'), 2000);
+        }
+    </script>
+</body>
+</html>
