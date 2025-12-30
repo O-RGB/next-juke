@@ -4,4 +4,4 @@ const PEER_CONFIG = {
 };
 
 // ค่าคงที่อื่นๆ
-const APP_NAME = "NextJuke";
+const APP_NAME = "NextCast";
