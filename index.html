@@ -16,7 +16,6 @@
       content="Jukebox, Party, Karaoke, YouTube Player, WebRTC, PeerJS, ปาร์ตี้, เพลง, คาราโอเกะ"
     />
     <meta name="author" content="NextCast" />
-
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://next-cast.vercel.app/" />
     <meta property="og:title" content="NextCast - Party Jukebox" />
@@ -33,7 +32,6 @@
       content="เปลี่ยนทุกหน้าจอเป็น Party Jukebox ฟรี!"
     />
     <meta property="twitter:image" content="/assets/cover.png" />
-
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
@@ -42,10 +40,10 @@
     <meta name="apple-mobile-web-app-title" content="NextCast" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#000000" />
-
     <link rel="manifest" href="assets/manifest.json" />
     <link rel="apple-touch-icon" href="assets/icon.png" />
     <link rel="icon" type="image/png" href="assets/icon-t.png" />
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
@@ -65,7 +63,7 @@
       class="absolute inset-0 z-[100] bg-black flex flex-col font-sans overflow-y-auto transition-opacity duration-700 scrollbar-hide"
     >
       <nav
-        class="p-6 pt-safe flex justify-between items-center max-w-7xl mx-auto w-full shrink-0"
+        class="p-6 pt-safe-plus-6 flex justify-between items-center max-w-7xl mx-auto w-full shrink-0"
       >
         <div
           class="flex items-center gap-2 text-2xl font-bold tracking-tighter"
@@ -156,7 +154,9 @@
           </div>
         </div>
       </main>
-      <footer class="p-6 text-center text-zinc-800 text-xs shrink-0 pb-safe">
+      <footer
+        class="p-6 text-center text-zinc-800 text-xs shrink-0 pb-safe-plus-6"
+      >
         NextCast System v1.0
       </footer>
     </div>
@@ -246,7 +246,7 @@
 
       <div
         id="toast-container"
-        class="fixed top-20 right-5 z-[100] flex flex-col gap-2 pointer-events-none pt-safe"
+        class="fixed top-24 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none pt-safe-plus-2 items-center w-full max-w-sm px-4"
       ></div>
 
       <div
@@ -264,12 +264,21 @@
 
       <header
         id="main-header"
-        class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-20 bg-gradient-to-b from-black/90 to-transparent fade-transition pt-safe"
+        class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 pb-2 pt-safe-plus-2 min-h-[80px] bg-gradient-to-b from-black/90 to-transparent fade-transition"
       >
-        <div
-          class="flex items-center gap-2 text-2xl font-bold tracking-tighter"
-        >
-          <img src="/assets/icon-t.png" class="w-9 h-9 mt-1" alt="" /> NextCast
+        <div class="flex items-center gap-3">
+          <img src="/assets/icon-t.png" class="w-9 h-9" alt="" />
+          <div class="flex flex-col justify-center">
+            <span class="text-xl font-bold tracking-tighter leading-none"
+              >NextCast</span
+            >
+            <span
+              id="header-song-title"
+              class="text-[10px] text-gray-400 font-normal truncate max-w-[150px] sm:max-w-[300px] leading-tight hidden fade-in"
+            >
+              -
+            </span>
+          </div>
         </div>
         <div
           class="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/80 border border-zinc-700 text-xs font-mono text-gray-400"
@@ -334,7 +343,7 @@
 
         <div
           id="qr-screen"
-          class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500 pb-safe overflow-y-auto"
+          class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500 pb-safe-plus-6 overflow-y-auto"
         >
           <div
             class="flex flex-col items-center gap-4 lg:gap-6 p-4 lg:p-8 rounded-3xl bg-zinc-900 border border-zinc-800 shadow-2xl max-w-sm w-full m-auto"
@@ -369,7 +378,7 @@
 
         <div
           id="now-playing-overlay"
-          class="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-500 w-full max-w-md px-4 pb-safe"
+          class="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-500 w-full max-w-md px-4 pb-safe-plus-6"
         >
           <div
             class="bg-black/80 p-4 rounded-xl border border-white/10 flex items-center gap-4 shadow-2xl"
@@ -394,7 +403,7 @@
 
       <footer
         id="main-footer"
-        class="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black via-black/50 to-transparent h-20 flex items-end pb-6 px-6 gap-4 fade-transition pb-safe"
+        class="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black via-black/50 to-transparent h-20 flex items-end px-6 gap-4 fade-transition pb-safe-plus-6"
       >
         <div class="flex items-center gap-2 shrink-0">
           <button
@@ -572,7 +581,6 @@
         </div>
       </div>
     </div>
-
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/host.js"></script>

@@ -1,100 +1,239 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
+  <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>NextCast Remote</title>
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <link rel="stylesheet" href="css/style.css" />
-    <style>body { overflow-y: auto; }</style>
-</head>
-<body class="flex flex-col h-screen overflow-hidden font-sans bg-black selection:bg-red-500 selection:text-white">
-    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-zinc-800 border border-zinc-700 text-white px-4 py-2 rounded-full shadow-xl transition-opacity duration-300 opacity-0 pointer-events-none text-sm font-bold flex items-center gap-2 whitespace-nowrap pt-safe">
-        <i class="fa-solid fa-check text-green-500"></i><span id="toast-msg">Success</span>
+    <style>
+      body {
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body
+    class="flex flex-col h-screen overflow-hidden font-sans bg-black selection:bg-red-500 selection:text-white"
+  >
+    <div
+      id="toast"
+      class="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-zinc-800 border border-zinc-700 text-white px-4 py-2 rounded-full shadow-xl transition-opacity duration-300 opacity-0 pointer-events-none text-sm font-bold flex items-center gap-2 whitespace-nowrap pt-safe"
+    >
+      <i class="fa-solid fa-check text-green-500"></i
+      ><span id="toast-msg">Success</span>
     </div>
 
-    <div id="login-screen" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6">
-        <div class="w-full max-w-sm glass-panel p-8 rounded-3xl text-center space-y-6">
-            <h1 class="text-2xl font-bold text-white">เข้าร่วมปาร์ตี้</h1>
-            <input id="username-input" type="text" placeholder="ใส่ชื่อของคุณ" class="w-full bg-zinc-900 border border-zinc-700 p-4 rounded-xl text-center text-white outline-none focus:border-red-600 transition-colors" />
-            <button onclick="handleJoin()" class="w-full bg-red-600 hover:bg-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-600/20 active:scale-95 transition-all">เข้าห้อง</button>
-            <p id="error-msg" class="text-red-500 text-xs"></p>
-        </div>
+    <div
+      id="login-screen"
+      class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6"
+    >
+      <div
+        class="w-full max-w-sm glass-panel p-8 rounded-3xl text-center space-y-6"
+      >
+        <h1 class="text-2xl font-bold text-white">เข้าร่วมปาร์ตี้</h1>
+        <input
+          id="username-input"
+          type="text"
+          placeholder="ใส่ชื่อของคุณ"
+          class="w-full bg-zinc-900 border border-zinc-700 p-4 rounded-xl text-center text-white outline-none focus:border-red-600 transition-colors"
+        />
+        <button
+          onclick="handleJoin()"
+          class="w-full bg-red-600 hover:bg-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-600/20 active:scale-95 transition-all"
+        >
+          เข้าห้อง
+        </button>
+        <p id="error-msg" class="text-red-500 text-xs"></p>
+      </div>
     </div>
 
     <div id="remote-ui" class="flex-1 flex flex-col hidden">
-        <div class="shrink-0 p-4 pt-safe flex justify-between items-center glass-panel border-b-0 border-white/5 bg-zinc-900/50">
-            <div class="flex items-center gap-3">
-                <div id="user-avatar" class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-lg border border-white/10 text-gray-400">?</div>
-                <div>
-                    <div id="user-name" class="font-bold text-sm leading-tight text-white">-</div>
-                    <div id="user-role" class="text-[10px] text-gray-500 font-mono uppercase">ผู้ร่วมงาน</div>
-                </div>
+      <div
+        class="shrink-0 p-4 pt-safe flex justify-between items-center glass-panel border-b-0 border-white/5 bg-zinc-900/50"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            id="user-avatar"
+            class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-lg border border-white/10 text-gray-400"
+          >
+            ?
+          </div>
+          <div>
+            <div
+              id="user-name"
+              class="font-bold text-sm leading-tight text-white"
+            >
+              -
             </div>
-            <div id="status-badge" class="text-[10px] px-2 py-1 rounded-full border bg-zinc-800 border-zinc-700 text-gray-400">Connecting...</div>
+            <div
+              id="user-role"
+              class="text-[10px] text-gray-500 font-mono uppercase"
+            >
+              ผู้ร่วมงาน
+            </div>
+          </div>
         </div>
-
-        <div class="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
-            <div class="glass-panel p-4 rounded-2xl space-y-3">
-                <div class="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider"><i class="fa-brands fa-youtube text-red-600 text-lg"></i> ขอเพลง (YouTube)</div>
-                <div class="flex gap-2">
-                    <button onclick="pasteFromClipboard()" class="w-12 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700 active:scale-95 transition-transform" title="วางลิงก์ที่ก๊อปมา">
-                        <i class="fa-solid fa-paste"></i>
-                    </button>
-                    <input id="url-input" type="text" placeholder="วางลิงก์ YouTube ที่นี่..." class="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-sm focus:border-red-600 outline-none transition-colors" />
-                    <button onclick="addSong()" id="add-btn" class="w-12 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-gray-500 transition-colors" disabled><i class="fa-solid fa-plus"></i></button>
-                </div>
-
-                <div id="preview-box" class="flex gap-3 bg-zinc-900/50 p-2 rounded-lg border border-white/5 hidden fade-in">
-                    <img id="prev-img" src="" class="w-16 h-12 object-cover rounded bg-zinc-800" />
-                    <div class="flex-1 min-w-0 flex flex-col justify-center">
-                        <p id="prev-title" class="text-xs font-bold truncate text-white"></p>
-                        <p class="text-[10px] text-gray-500">พร้อมเพิ่มเข้าคิว</p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="master-controls" class="hidden grid grid-cols-4 gap-3 fade-in">
-                <button onclick="sendAction('SEEK', {amount: -5})" class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700">
-                    <i class="fa-solid fa-rotate-left text-gray-400"></i><span class="text-[10px] font-bold text-gray-500">-5s</span>
-                </button>
-                <button onclick="sendAction('PLAY')" class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700"><i class="fa-solid fa-play text-green-500 text-lg"></i></button>
-                <button onclick="sendAction('PAUSE')" class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700"><i class="fa-solid fa-pause text-yellow-500 text-lg"></i></button>
-                <button onclick="sendAction('SEEK', {amount: 5})" class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700">
-                    <i class="fa-solid fa-rotate-right text-gray-400"></i><span class="text-[10px] font-bold text-gray-500">+5s</span>
-                </button>
-                <button onclick="sendAction('NEXT')" class="col-span-4 bg-gradient-to-r from-zinc-800 to-zinc-700 border border-zinc-600 p-4 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg active:scale-95 transition"><i class="fa-solid fa-forward-step text-white"></i> เล่นเพลงถัดไป</button>
-            </div>
-
-            <div id="non-master-msg" class="flex-1 flex flex-col items-center justify-center text-zinc-600 border-2 border-dashed border-zinc-800 rounded-2xl p-6 min-h-[120px]">
-                <p class="text-sm">รอ Master DJ ควบคุมเพลง</p>
-            </div>
+        <div
+          id="status-badge"
+          class="text-[10px] px-2 py-1 rounded-full border bg-zinc-800 border-zinc-700 text-gray-400"
+        >
+          Connecting...
         </div>
+      </div>
 
-        <div class="shrink-0 p-4 pb-8 pb-safe glass-panel border-t border-white/5 grid grid-cols-2 gap-4">
-            <button onclick="document.getElementById('queue-modal').classList.remove('hidden')" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition">
-                <i class="fa-solid fa-list text-gray-400"></i> คิวเพลง (<span id="q-count-btn">0</span>)
+      <div class="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
+        <div class="glass-panel p-4 rounded-2xl space-y-3">
+          <div
+            class="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider"
+          >
+            <i class="fa-brands fa-youtube text-red-600 text-lg"></i> ขอเพลง
+            (YouTube)
+          </div>
+          <div class="flex gap-2">
+            <button
+              onclick="pasteFromClipboard()"
+              class="w-12 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700 active:scale-95 transition-transform"
+              title="วางลิงก์ที่ก๊อปมา"
+            >
+              <i class="fa-solid fa-paste"></i>
             </button>
-            <button id="stop-btn" onclick="sendAction('STOP')" class="hidden bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition"><i class="fa-solid fa-stop"></i> จบปาร์ตี้</button>
+            <input
+              id="url-input"
+              type="text"
+              placeholder="วางลิงก์ YouTube ที่นี่..."
+              class="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-sm focus:border-red-600 outline-none transition-colors"
+            />
+            <button
+              onclick="addSong()"
+              id="add-btn"
+              class="w-12 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-gray-500 transition-colors"
+              disabled
+            >
+              <i class="fa-solid fa-plus"></i>
+            </button>
+          </div>
+
+          <div
+            id="preview-box"
+            class="flex gap-3 bg-zinc-900/50 p-2 rounded-lg border border-white/5 hidden fade-in"
+          >
+            <img
+              id="prev-img"
+              src=""
+              class="w-16 h-12 object-cover rounded bg-zinc-800"
+            />
+            <div class="flex-1 min-w-0 flex flex-col justify-center">
+              <p
+                id="prev-title"
+                class="text-xs font-bold truncate text-white"
+              ></p>
+              <p class="text-[10px] text-gray-500">พร้อมเพิ่มเข้าคิว</p>
+            </div>
+          </div>
         </div>
+
+        <div id="master-controls" class="hidden grid grid-cols-4 gap-3 fade-in">
+          <button
+            onclick="sendAction('SEEK', {amount: -5})"
+            class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700"
+          >
+            <i class="fa-solid fa-rotate-left text-gray-400"></i
+            ><span class="text-[10px] font-bold text-gray-500">-5s</span>
+          </button>
+          <button
+            onclick="sendAction('PLAY')"
+            class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700"
+          >
+            <i class="fa-solid fa-play text-green-500 text-lg"></i>
+          </button>
+          <button
+            onclick="sendAction('PAUSE')"
+            class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700"
+          >
+            <i class="fa-solid fa-pause text-yellow-500 text-lg"></i>
+          </button>
+          <button
+            onclick="sendAction('SEEK', {amount: 5})"
+            class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700"
+          >
+            <i class="fa-solid fa-rotate-right text-gray-400"></i
+            ><span class="text-[10px] font-bold text-gray-500">+5s</span>
+          </button>
+          <button
+            onclick="sendAction('NEXT')"
+            class="col-span-4 bg-gradient-to-r from-zinc-800 to-zinc-700 border border-zinc-600 p-4 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg active:scale-95 transition"
+          >
+            <i class="fa-solid fa-forward-step text-white"></i> เล่นเพลงถัดไป
+          </button>
+        </div>
+
+        <div
+          id="non-master-msg"
+          class="flex-1 flex flex-col items-center justify-center text-zinc-600 border-2 border-dashed border-zinc-800 rounded-2xl p-6 min-h-[120px]"
+        >
+          <p class="text-sm">รอ Master DJ ควบคุมเพลง</p>
+        </div>
+      </div>
+
+      <div
+        class="shrink-0 p-4 pb-8 pb-safe glass-panel border-t border-white/5 grid grid-cols-2 gap-4"
+      >
+        <button
+          onclick="document.getElementById('queue-modal').classList.remove('hidden')"
+          class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition"
+        >
+          <i class="fa-solid fa-list text-gray-400"></i> คิวเพลง (<span
+            id="q-count-btn"
+            >0</span
+          >)
+        </button>
+        <button
+          id="stop-btn"
+          onclick="sendAction('STOP')"
+          class="hidden bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition"
+        >
+          <i class="fa-solid fa-stop"></i> จบปาร์ตี้
+        </button>
+      </div>
     </div>
 
-    <div id="queue-modal" class="fixed inset-0 z-[60] bg-black/90 hidden flex items-center justify-center p-4 fade-in">
-        <div class="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl flex flex-col max-h-[70vh] shadow-2xl">
-            <div class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 rounded-t-2xl">
-                <h3 class="font-bold text-white">รายการคิวเพลง</h3>
-                <button onclick="document.getElementById('queue-modal').classList.add('hidden')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times"></i></button>
-            </div>
-            <div id="queue-list-modal" class="overflow-y-auto p-4 space-y-2 bg-black/20"></div>
+    <div
+      id="queue-modal"
+      class="fixed inset-0 z-[60] bg-black/90 hidden flex items-center justify-center p-4 fade-in"
+    >
+      <div
+        class="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl flex flex-col max-h-[70vh] shadow-2xl"
+      >
+        <div
+          class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 rounded-t-2xl"
+        >
+          <h3 class="font-bold text-white">รายการคิวเพลง</h3>
+          <button
+            onclick="document.getElementById('queue-modal').classList.add('hidden')"
+            class="text-gray-400 hover:text-white"
+          >
+            <i class="fa-solid fa-times"></i>
+          </button>
         </div>
+        <div
+          id="queue-list-modal"
+          class="overflow-y-auto p-4 space-y-2 bg-black/20"
+        ></div>
+      </div>
     </div>
 
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/remote.js"></script>
-</body>
+  </body>
 </html>

@@ -1,8 +1,6 @@
-// js/host.js - Full Code with Background Play Support
+// js/host.js - Full Code with Fixes
 
-// [ADD 1] ประกาศตัวแปร Wake Lock
 let wakeLock = null;
-
 let player, peer, peerId;
 let connections = [];
 let isAppStarted = false;
@@ -25,7 +23,6 @@ let hasInteracted = false;
 let lastPlayedSongId = null;
 let idleTimer;
 
-// [ADD 2] ฟังก์ชันขอ Wake Lock (ป้องกันจอดับ)
 async function requestWakeLock() {
   try {
     if ("wakeLock" in navigator) {
@@ -40,7 +37,6 @@ async function requestWakeLock() {
   }
 }
 
-// [ADD 3] ฟังก์ชันตั้งค่า Media Session (โชว์ปกเพลงตอน Lock Screen)
 function updateMediaSession(song) {
   if ("mediaSession" in navigator && song) {
     navigator.mediaSession.metadata = new MediaMetadata({
@@ -54,8 +50,6 @@ function updateMediaSession(song) {
         { src: song.thumbnail, sizes: "512x512", type: "image/jpeg" },
       ],
     });
-
-    // เพิ่มปุ่มควบคุม
     navigator.mediaSession.setActionHandler("play", () => {
       if (player) player.playVideo();
     });
@@ -69,7 +63,6 @@ function updateMediaSession(song) {
   }
 }
 
-// [ADD 4] กู้คืน Wake Lock เมื่อสลับหน้าจอกลับมา
 document.addEventListener("visibilitychange", async () => {
   if (wakeLock !== null && document.visibilityState === "visible") {
     await requestWakeLock();
@@ -186,8 +179,6 @@ function onPlayerStateChange(event) {
   if (event.data === 1) {
     // PLAYING
     isPlaying = true;
-
-    // [ADD 5] เรียกใช้ Wake Lock และ Media Session เมื่อเพลงเล่น
     requestWakeLock();
     if (state.currentSong) updateMediaSession(state.currentSong);
 
@@ -195,6 +186,7 @@ function onPlayerStateChange(event) {
       .getElementById("play-btn-icon")
       .classList.replace("fa-play", "fa-pause");
     document.getElementById("buffering-indicator").classList.add("hidden");
+    // ซ่อน QR ถ้าเล่นอยู่
     document
       .getElementById("qr-screen")
       .classList.add("opacity-0", "pointer-events-none");
@@ -308,7 +300,7 @@ function handleCommand(cmd, conn) {
     case "STOP":
       if (isMaster(cmd.user.id)) {
         state.queue = [];
-        triggerNext(); // Will stop because queue is empty
+        triggerNext();
       }
       break;
     case "SEEK":
@@ -329,6 +321,11 @@ function triggerNext() {
     const song = state.queue.shift();
     const cdOverlay = document.getElementById("countdown-overlay");
     const cdNum = document.getElementById("cd-number");
+
+    // [FIX 1] ซ่อน QR Code ทันทีที่เริ่มนับถอยหลัง
+    document
+      .getElementById("qr-screen")
+      .classList.add("opacity-0", "pointer-events-none");
 
     document.getElementById("cd-title").innerText = song.title;
     document.getElementById("cd-sender").innerText = song.sender;
@@ -351,6 +348,11 @@ function triggerNext() {
   } else {
     state.currentSong = null;
     player.stopVideo();
+
+    // [FIX 2] ซ่อนชื่อเพลงบน Header ถ้าไม่มีเพลงเล่น
+    const headerTitle = document.getElementById("header-song-title");
+    if (headerTitle) headerTitle.classList.add("hidden");
+
     document
       .getElementById("qr-screen")
       .classList.remove("opacity-0", "pointer-events-none");
@@ -360,11 +362,15 @@ function triggerNext() {
 
 function playSong(song) {
   state.currentSong = song;
-
-  // [ADD 6] อัปเดตข้อมูล Media Session (Lock Screen Info)
   updateMediaSession(song);
-
   renderDashboard();
+
+  // [FIX 3] แสดงชื่อเพลงบน Header
+  const headerTitle = document.getElementById("header-song-title");
+  if (headerTitle) {
+    headerTitle.innerText = song.title;
+    headerTitle.classList.remove("hidden");
+  }
 
   document.getElementById("np-title").innerText = song.title;
   document.getElementById("np-thumb").src = song.thumbnail;
@@ -395,13 +401,18 @@ function broadcastState() {
   });
 }
 
+// [FIX 4] ปรับปรุง Toast Function ให้รองรับ Text ยาวๆ
 function showToast(msg, type = "info") {
   const t = document.createElement("div");
   const color = type === "success" ? "text-green-400" : "text-blue-400";
-  t.className = `bg-zinc-900 border border-zinc-700 text-white px-4 py-3 rounded-xl shadow-xl animate-[fadeIn_0.3s] text-sm font-bold flex items-center gap-2`;
-  t.innerHTML = `<i class="fa-solid fa-${
-    type === "success" ? "check" : "info-circle"
-  } ${color}"></i> ${msg}`;
+  // ใช้ w-full แต่มี max-width ใน container, word-break
+  t.className = `bg-zinc-900 border border-zinc-700 text-white px-4 py-3 rounded-xl shadow-xl animate-[fadeIn_0.3s] text-sm font-bold flex items-center gap-2 w-full`;
+  t.innerHTML = `
+    <i class="fa-solid fa-${
+      type === "success" ? "check" : "info-circle"
+    } ${color} shrink-0"></i>
+    <span class="break-words leading-tight flex-1 text-left">${msg}</span>
+  `;
   document.getElementById("toast-container").appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
@@ -471,7 +482,6 @@ function handleSeek(val) {
   }
 }
 
-// Timer for Progress Bar
 setInterval(() => {
   if (player && isPlaying) {
     const c = player.getCurrentTime();
@@ -483,11 +493,10 @@ setInterval(() => {
   }
 }, 1000);
 
-// Modal Functions
 function openModal(id) {
   const el = document.getElementById(id);
   el.classList.remove("hidden");
-  void el.offsetWidth; // Force reflow
+  void el.offsetWidth;
   el.classList.remove("opacity-0");
 }
 
