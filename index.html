@@ -29,7 +29,6 @@
       property="og:image"
       content="https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
     />
-
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://nextjuke.vercel.app/" />
     <meta property="twitter:title" content="NextJuke - Party Jukebox" />
@@ -78,7 +77,7 @@
       body {
         overflow: hidden;
         background: #000;
-        user-select: none;
+        /* user-select: none;  Removed to allow copying */
         -webkit-tap-highlight-color: transparent;
       }
       .scrollbar-hide::-webkit-scrollbar {
@@ -99,7 +98,7 @@
         opacity: 1;
       }
       .fade-transition {
-        transition: opacity 0.5s ease-in-out;
+        transition: opacity 0.3s ease-in-out;
       }
       .opacity-0-force {
         opacity: 0 !important;
@@ -116,9 +115,8 @@
         }
       }
       .animate-in {
-        animation: fadeIn 0.7s ease-out forwards;
+        animation: fadeIn 0.5s ease-out forwards;
       }
-      /* Custom Scrollbar for Modal content */
       .modal-scroll::-webkit-scrollbar {
         width: 4px;
       }
@@ -128,6 +126,13 @@
       .modal-scroll::-webkit-scrollbar-thumb {
         background: rgba(255, 255, 255, 0.2);
         border-radius: 4px;
+      }
+      /* Safe Area Utilities */
+      .pt-safe {
+        padding-top: env(safe-area-inset-top);
+      }
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
       }
     </style>
   </head>
@@ -139,7 +144,7 @@
       class="absolute inset-0 z-[100] bg-black flex flex-col font-sans overflow-y-auto transition-opacity duration-700 scrollbar-hide"
     >
       <nav
-        class="p-6 flex justify-between items-center max-w-7xl mx-auto w-full shrink-0"
+        class="p-6 pt-safe flex justify-between items-center max-w-7xl mx-auto w-full shrink-0"
       >
         <div
           class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-orange-500"
@@ -222,88 +227,24 @@
             </p>
           </div>
         </div>
-
-        <div class="w-full mt-16 pt-10 border-t border-zinc-800 text-left">
-          <h3 class="text-2xl font-bold mb-6 text-center">
-            เบื้องหลัง NextJuke
-          </h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="space-y-4">
-              <h4 class="text-lg font-bold text-pink-500">
-                สร้างด้วยเทคโนโลยีอะไร?
-              </h4>
-              <p class="text-gray-400 text-sm leading-relaxed">
-                เว็บแอปพลิเคชันนี้พัฒนาโดยใช้เทคโนโลยีเว็บสมัยใหม่เพื่อให้ทำงานได้ลื่นไหลเหมือนแอป
-                Native:
-              </p>
-              <ul class="text-sm text-gray-400 list-disc list-inside space-y-1">
-                <li>
-                  <strong class="text-white">PeerJS (WebRTC):</strong> เชื่อมต่อ
-                  Real-time ระหว่างรีโมทและจอเล่นเพลง
-                </li>
-                <li>
-                  <strong class="text-white">YouTube IFrame API:</strong>
-                  ขุมพลังในการเล่นเพลง
-                </li>
-                <li>
-                  <strong class="text-white">Tailwind CSS:</strong>
-                  ออกแบบหน้าตาให้สวยงาม ทันสมัย
-                </li>
-              </ul>
+         <div class="w-full mt-10 mb-6 p-1">
+            <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 to-purple-900 border border-white/10 p-8 sm:p-12 text-left flex flex-col sm:flex-row items-center justify-between gap-8 group shadow-2xl">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-purple-500/20 rounded-full -mr-16 -mt-16 pointer-events-none"></div>
+                <div class="space-y-4 relative z-10 max-w-xl">
+                    <div class="flex items-center gap-3 text-indigo-300 font-bold uppercase tracking-wider text-sm">
+                        <i class="fa-solid fa-music"></i> แนะนำเพื่อนบ้าน
+                    </div>
+                    <h2 class="text-3xl sm:text-4xl font-bold text-white">NextKaraoke</h2>
+                    <p class="text-gray-300 text-lg leading-relaxed">อีกหนึ่งทางเลือกสำหรับสายร้อง! แอปเล่นคาราโอเกะบนเว็บ รองรับไฟล์ MIDI, EMK, NCN</p>
+                </div>
+                <a href="https://next-karaoke.vercel.app/" target="_blank" class="relative z-10 shrink-0 bg-white text-indigo-900 px-8 py-4 rounded-full font-bold text-lg flex items-center gap-2 hover:bg-indigo-50 hover:scale-105 transition shadow-xl">
+                    ลองดูไหม <i class="fa-solid fa-arrow-right"></i>
+                </a>
             </div>
-            <div class="space-y-4">
-              <h4 class="text-lg font-bold text-green-500">ใช้งานฟรี 100%</h4>
-              <p class="text-gray-400 text-sm leading-relaxed">
-                NextJuke ถูกสร้างขึ้นด้วยใจรักในเสียงดนตรีและการปาร์ตี้
-                <br /><br />
-                <span
-                  class="text-white bg-white/10 px-2 py-1 rounded inline-block mb-2"
-                >
-                  <i class="fa-solid fa-ban text-red-500"></i> ไม่มีค่าใช้จ่าย
-                </span>
-                <span
-                  class="text-white bg-white/10 px-2 py-1 rounded inline-block"
-                >
-                  <i class="fa-solid fa-ban text-red-500"></i> ไม่มีการเก็บเงิน
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="w-full mt-10 mb-6 p-1">
-          <div
-            class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 to-purple-900 border border-white/10 p-8 sm:p-12 text-left flex flex-col sm:flex-row items-center justify-between gap-8 group shadow-2xl"
-          >
-            <div
-              class="absolute top-0 right-0 w-64 h-64 bg-purple-500/20 rounded-full -mr-16 -mt-16 pointer-events-none"
-            ></div>
-            <div class="space-y-4 relative z-10 max-w-xl">
-              <div
-                class="flex items-center gap-3 text-indigo-300 font-bold uppercase tracking-wider text-sm"
-              >
-                <i class="fa-solid fa-music"></i> แนะนำเพื่อนบ้าน
-              </div>
-              <h2 class="text-3xl sm:text-4xl font-bold text-white">
-                NextKaraoke
-              </h2>
-              <p class="text-gray-300 text-lg leading-relaxed">
-                อีกหนึ่งทางเลือกสำหรับสายร้อง! แอปเล่นคาราโอเกะบนเว็บ รองรับไฟล์
-                MIDI, EMK, NCN
-              </p>
-            </div>
-            <a
-              href="https://next-karaoke.vercel.app/"
-              target="_blank"
-              class="relative z-10 shrink-0 bg-white text-indigo-900 px-8 py-4 rounded-full font-bold text-lg flex items-center gap-2 hover:bg-indigo-50 hover:scale-105 transition shadow-xl"
-            >
-              ลองดูไหม <i class="fa-solid fa-arrow-right"></i>
-            </a>
-          </div>
         </div>
       </main>
 
-      <footer class="p-6 text-center text-zinc-700 text-xs shrink-0">
+      <footer class="p-6 text-center text-zinc-700 text-xs shrink-0 pb-safe">
         NextJuke © 2025 - Free for everyone
       </footer>
     </div>
@@ -314,10 +255,10 @@
     >
       <div
         id="welcome-modal"
-        class="fixed inset-0 z-[110] bg-black/90 hidden flex items-center justify-center p-4 fade-transition"
+        class="fixed inset-0 z-[110] bg-black/90 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4"
       >
         <div
-          class="w-full max-w-2xl bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-[fadeIn_0.5s]"
+          class="w-full max-w-2xl bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in"
         >
           <div
             class="p-4 border-b border-white/10 flex justify-between items-center bg-black/40 shrink-0"
@@ -326,7 +267,7 @@
               ยินดีต้อนรับสู่ NextJuke
             </h3>
             <button
-              onclick="handleCloseWelcome()"
+              onclick="closeModal('welcome-modal')"
               class="text-gray-400 hover:text-white px-2 py-1"
             >
               <i class="fa-solid fa-times text-lg"></i>
@@ -336,57 +277,28 @@
           <div
             class="p-4 md:p-6 overflow-y-auto flex-1 modal-scroll text-white"
           >
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-8">
-              <div
-                class="bg-zinc-800/50 p-3 md:p-6 rounded-2xl border border-green-500/20 text-center space-y-2 md:space-y-4"
-              >
-                <i
-                  class="fa-brands fa-android text-4xl md:text-6xl text-green-500 mx-auto block"
-                ></i>
-                <h3 class="text-base md:text-xl font-bold text-green-400">
-                  Android User
-                </h3>
-                <p class="text-xs md:text-sm text-gray-300 leading-relaxed">
-                  ระบบจะเล่นเพลงต่อเนื่องอัตโนมัติ <br />
-                  แตะ <strong>"เปิดเสียง"</strong> ครั้งเดียวจบ
-                </p>
-                <div
-                  class="flex justify-center items-center gap-2 bg-green-900/20 py-1.5 md:py-2 rounded-lg"
-                >
-                  <i class="fa-solid fa-check text-green-500 text-xs"></i>
-                  <span class="text-[10px] md:text-xs text-green-500"
-                    >แนะนำสำหรับเปิดจอทิ้งไว้</span
-                  >
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-8">
+                <div class="bg-zinc-800/50 p-3 md:p-6 rounded-2xl border border-green-500/20 text-center space-y-2 md:space-y-4">
+                  <i class="fa-brands fa-android text-4xl md:text-6xl text-green-500 mx-auto block"></i>
+                  <h3 class="text-base md:text-xl font-bold text-green-400">Android User</h3>
+                  <p class="text-xs md:text-sm text-gray-300 leading-relaxed">ระบบจะเล่นเพลงต่อเนื่องอัตโนมัติ <br />แตะ <strong>"เปิดเสียง"</strong> ครั้งเดียวจบ</p>
+                  <div class="flex justify-center items-center gap-2 bg-green-900/20 py-1.5 md:py-2 rounded-lg">
+                    <i class="fa-solid fa-check text-green-500 text-xs"></i>
+                    <span class="text-[10px] md:text-xs text-green-500">แนะนำสำหรับเปิดจอทิ้งไว้</span>
+                  </div>
+                </div>
+                <div class="bg-zinc-800/50 p-3 md:p-6 rounded-2xl border border-white/20 text-center space-y-2 md:space-y-4">
+                  <i class="fa-brands fa-apple text-4xl md:text-6xl text-white mx-auto block"></i>
+                  <h3 class="text-base md:text-xl font-bold text-white">iOS User</h3>
+                  <p class="text-xs md:text-sm text-gray-300 leading-relaxed">เนื่องจากความปลอดภัย iOS <br /><strong class="text-pink-400">ต้องกดปุ่ม "เปิดเสียง" หากเพลงเงียบ</strong></p>
+                  <div class="inline-block bg-red-500/10 text-red-300 text-[10px] md:text-xs px-2 md:px-3 py-1 rounded-full border border-red-500/20">ข้อจำกัดของระบบปฏิบัติการ</div>
                 </div>
               </div>
-
-              <div
-                class="bg-zinc-800/50 p-3 md:p-6 rounded-2xl border border-white/20 text-center space-y-2 md:space-y-4"
-              >
-                <i
-                  class="fa-brands fa-apple text-4xl md:text-6xl text-white mx-auto block"
-                ></i>
-                <h3 class="text-base md:text-xl font-bold text-white">
-                  iOS User
-                </h3>
-                <p class="text-xs md:text-sm text-gray-300 leading-relaxed">
-                  เนื่องจากความปลอดภัย iOS <br />
-                  <strong class="text-pink-400"
-                    >ต้องกดปุ่ม "เปิดเสียง" หากเพลงเงียบ</strong
-                  >
-                </p>
-                <div
-                  class="inline-block bg-red-500/10 text-red-300 text-[10px] md:text-xs px-2 md:px-3 py-1 rounded-full border border-red-500/20"
-                >
-                  ข้อจำกัดของระบบปฏิบัติการ
-                </div>
-              </div>
-            </div>
           </div>
 
           <div class="p-4 border-t border-white/5 bg-zinc-900 shrink-0">
             <button
-              onclick="handleCloseWelcome()"
+              onclick="closeModal('welcome-modal')"
               class="w-full bg-pink-600 hover:bg-pink-500 text-white py-3 md:py-4 rounded-xl font-bold text-base md:text-lg transition shadow-lg shadow-pink-600/20 active:scale-95"
             >
               รับทราบ
@@ -397,7 +309,7 @@
 
       <div
         id="toast-container"
-        class="fixed top-20 right-5 z-[100] flex flex-col gap-2 pointer-events-none"
+        class="fixed top-20 right-5 z-[100] flex flex-col gap-2 pointer-events-none pt-safe"
       ></div>
 
       <div
@@ -415,7 +327,7 @@
 
       <header
         id="main-header"
-        class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-20 bg-gradient-to-b from-black/90 to-transparent fade-transition"
+        class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-20 bg-gradient-to-b from-black/90 to-transparent fade-transition pt-safe"
       >
         <div class="flex items-center gap-3">
           <div
@@ -491,31 +403,35 @@
             class="absolute inset-0 w-full h-full object-cover opacity-30 grayscale"
           />
         </div>
+        
         <div
           id="qr-screen"
-          class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500"
+          class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500 pb-safe overflow-y-auto"
         >
           <div
-            class="flex flex-col items-center gap-6 p-8 rounded-3xl bg-zinc-900 border border-zinc-800 shadow-2xl max-w-sm w-full"
+            class="flex flex-col items-center gap-4 lg:gap-6 p-4 lg:p-8 rounded-3xl bg-zinc-900 border border-zinc-800 shadow-2xl max-w-sm w-full m-auto"
           >
             <h2 class="text-2xl font-bold text-center">Join Party</h2>
-            <div class="p-3 bg-white rounded-xl"><div id="qrcode"></div></div>
+            <div class="p-3 bg-white rounded-xl scale-95 lg:scale-100"><div id="qrcode"></div></div>
             <div
               class="bg-black/50 px-4 py-2 rounded-lg border border-zinc-800 flex gap-2 items-center w-full overflow-hidden"
             >
               <i class="fa-solid fa-link text-zinc-500 shrink-0"></i>
-              <span
+              <a
                 id="join-url"
-                class="text-xs font-mono text-gray-400 truncate"
-                >Generating Link...</span
+                href="#"
+                target="_blank"
+                class="text-xs font-mono text-gray-400 truncate hover:text-white transition-colors cursor-pointer select-text"
+                >Generating Link...</a
               >
             </div>
-            <p class="text-zinc-500 text-xs">สแกนเพื่อเริ่มเพิ่มเพลง</p>
+            <p class="text-zinc-500 text-xs text-center">สแกนหรือกดที่ลิงก์เพื่อเข้าร่วม</p>
           </div>
         </div>
+
         <div
           id="now-playing-overlay"
-          class="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-500 w-full max-w-md px-4"
+          class="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-500 w-full max-w-md px-4 pb-safe"
         >
           <div
             class="bg-black/80 p-4 rounded-xl border border-white/10 flex items-center gap-4 shadow-2xl"
@@ -540,7 +456,7 @@
 
       <footer
         id="main-footer"
-        class="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black/95 to-transparent h-24 flex items-end pb-6 px-6 gap-4 fade-transition"
+        class="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black via-black/80 to-transparent h-28 flex items-end pb-6 px-6 gap-4 fade-transition pb-safe"
       >
         <div class="flex items-center gap-2 shrink-0">
           <button
@@ -606,10 +522,10 @@
 
       <div
         id="settings-modal"
-        class="fixed inset-0 z-[80] bg-black/90 hidden flex items-center justify-center p-4 fade-transition"
+        class="fixed inset-0 z-[80] bg-black/90 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4"
       >
         <div
-          class="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
+          class="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh] animate-in"
         >
           <div
             class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900"
@@ -638,7 +554,7 @@
               Settings
             </button>
           </div>
-          <div class="p-6 overflow-y-auto flex-1 bg-black/20">
+          <div class="p-6 overflow-y-auto flex-1 bg-black/20 min-h-[300px]">
             <div
               id="view-dashboard"
               class="grid grid-cols-1 md:grid-cols-2 gap-4"
@@ -718,14 +634,20 @@
                   <option value="small">Low (Save Data)</option>
                 </select>
               </div>
-              <div class="pt-4 border-t border-zinc-800 text-center">
-                <button
-                  onclick="openModal('welcome-modal')"
-                  class="text-xs text-pink-500 hover:underline"
-                >
-                  อ่านคำแนะนำการใช้งานอีกครั้ง
-                </button>
+              
+              <div class="pt-6 border-t border-zinc-800">
+                 <h4 class="font-bold text-sm mb-3 text-gray-400 uppercase tracking-wider">About NextJuke</h4>
+                 <div class="space-y-3">
+                     <button onclick="openModal('welcome-modal')" class="w-full bg-zinc-800 hover:bg-zinc-700 p-3 rounded-lg flex items-center justify-between transition text-sm">
+                        <span><i class="fa-solid fa-book-open mr-2 text-pink-500"></i> คู่มือการใช้งาน</span>
+                        <i class="fa-solid fa-chevron-right text-xs text-gray-500"></i>
+                     </button>
+                     <div class="text-center text-xs text-zinc-600 mt-4">
+                        Version 2.0.1 <br> NextJuke © 2025
+                     </div>
+                 </div>
               </div>
+
             </div>
           </div>
         </div>
@@ -774,8 +696,8 @@
                 .classList.remove("opacity-0"),
             100
           );
-
-          document.getElementById("welcome-modal").classList.remove("hidden");
+          
+          openModal("welcome-modal");
         }, 700);
 
         initPlayer();
@@ -787,10 +709,6 @@
         document.addEventListener("touchstart", resetIdle);
         document.addEventListener("click", resetIdle);
         resetIdle();
-      }
-
-      function handleCloseWelcome() {
-        document.getElementById("welcome-modal").classList.add("hidden");
       }
 
       function checkFullscreenSupport() {
@@ -812,7 +730,11 @@
             .classList.replace("bg-red-500", "bg-green-500");
 
           const url = `${window.location.origin}/remote.html?host=${id}`;
-          document.getElementById("join-url").innerText = url;
+          // Update Link Text and Href
+          const linkEl = document.getElementById("join-url");
+          linkEl.innerText = url;
+          linkEl.href = url;
+          
           new QRCode(document.getElementById("qrcode"), {
             text: url,
             width: 180,
@@ -1002,6 +924,13 @@
           case "NEXT":
             if (isMaster(cmd.user.id)) triggerNext();
             break;
+          case "SEEK":
+            if (isMaster(cmd.user.id) && player) {
+                const ct = player.getCurrentTime();
+                const newTime = ct + (cmd.amount || 0);
+                player.seekTo(newTime, true);
+            }
+            break;
           case "GET_STATE":
             broadcastState();
             break;
@@ -1170,11 +1099,22 @@
         const sec = Math.floor(s % 60);
         return `${m}:${sec < 10 ? "0" : ""}${sec}`;
       }
+      
+      // Improved Modal Logic with Animations
       function openModal(id) {
-        document.getElementById(id).classList.remove("hidden");
+        const el = document.getElementById(id);
+        el.classList.remove("hidden");
+        // Force reflow
+        void el.offsetWidth; 
+        el.classList.remove("opacity-0");
       }
+      
       function closeModal(id) {
-        document.getElementById(id).classList.add("hidden");
+        const el = document.getElementById(id);
+        el.classList.add("opacity-0");
+        setTimeout(() => {
+            el.classList.add("hidden");
+        }, 300); // Matches transition duration
       }
 
       function switchTab(tab) {
@@ -1199,10 +1139,8 @@
         state.settings.quality = val;
         localStorage.setItem("nj_quality", val);
 
-        // แก้ไข: โหลดวิดีโอซ้ำ ณ เวลาปัจจุบันเพื่อบังคับใช้ Quality ใหม่ทันที
         if (player && state.currentSong) {
           const currentTime = player.getCurrentTime();
-
           player.loadVideoById({
             videoId: state.currentSong.id,
             startSeconds: currentTime,
@@ -1256,9 +1194,8 @@
         clearTimeout(idleTimer);
         idleTimer = setTimeout(() => {
           if (
-            document
-              .getElementById("settings-modal")
-              .classList.contains("hidden") &&
+            document.getElementById("settings-modal").classList.contains("hidden") &&
+            document.getElementById("welcome-modal").classList.contains("hidden") &&
             isAppStarted
           ) {
             header.classList.add("opacity-0-force");
