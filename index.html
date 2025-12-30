@@ -56,7 +56,7 @@
       class="absolute inset-0 z-[100] bg-black flex flex-col font-sans overflow-y-auto transition-opacity duration-700 scrollbar-hide"
     >
       <nav
-        class="p-6 pt-safe-plus-6 flex justify-between items-center max-w-7xl mx-auto w-full shrink-0"
+        class="p-6 pt-safe flex justify-between items-center max-w-7xl mx-auto w-full shrink-0"
       >
         <div
           class="flex items-center gap-2 text-2xl font-bold tracking-tighter"
@@ -351,7 +351,7 @@
     >
       <div
         id="welcome-modal"
-        class="fixed inset-0 z-[110] bg-black/90 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4 pl-safe-plus-4 pr-safe-plus-4"
+        class="fixed inset-0 z-[110] bg-black/90 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4 pl-safe pr-safe"
       >
         <div
           class="w-full max-w-2xl bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in"
@@ -417,12 +417,12 @@
 
       <div
         id="toast-container"
-        class="fixed top-24 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none pt-safe-plus-2 items-center w-full max-w-sm px-4"
+        class="fixed top-24 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none pt-safe items-center w-full max-w-sm px-4"
       ></div>
 
       <div
         id="interaction-overlay"
-        class="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 hidden fade-transition pl-safe pr-safe"
+        class="absolute inset-0 z-[9999] flex items-center justify-center bg-black/80 hidden fade-transition pl-safe pr-safe"
       >
         <div
           onclick="handleUserInteraction(event)"
@@ -435,7 +435,7 @@
 
       <header
         id="main-header"
-        class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 pl-safe-plus-6 pr-safe-plus-6 pb-2 pt-safe-plus-2 min-h-[80px] bg-gradient-to-b from-black/90 to-transparent fade-transition"
+        class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 pl-safe pr-safe pb-2 pt-safe min-h-[80px] bg-gradient-to-b from-black/90 to-transparent fade-transition"
       >
         <div class="flex items-center gap-3">
           <img src="/assets/icon-t.png" class="w-9 h-9" alt="" />
@@ -511,7 +511,7 @@
         </div>
         <div
           id="qr-screen"
-          class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500 pb-safe-plus-6 pl-safe-plus-4 pr-safe-plus-4 overflow-y-auto"
+          class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500 pb-safe pl-safe pr-safe overflow-y-auto"
         >
           <div
             class="flex flex-col items-center gap-4 lg:gap-6 p-4 lg:p-8 rounded-3xl bg-zinc-900 border border-zinc-800 shadow-2xl max-w-sm w-full m-auto"
@@ -545,7 +545,7 @@
         </div>
         <div
           id="now-playing-overlay"
-          class="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-500 w-full max-w-md px-4 pb-safe-plus-6"
+          class="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-500 w-full max-w-md px-4 pb-safe"
         >
           <div
             class="bg-black/80 p-4 rounded-xl border border-white/10 flex items-center gap-4 shadow-2xl"
@@ -570,7 +570,7 @@
 
       <footer
         id="main-footer"
-        class="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black via-black/50 to-transparent h-20 flex items-end px-6 pl-safe-plus-6 pr-safe-plus-6 gap-4 fade-transition pb-safe-plus-6"
+        class="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black via-black/50 to-transparent h-20 flex items-end px-6 pl-safe pr-safe gap-4 fade-transition pb-safe"
       >
         <div class="flex items-center gap-2 shrink-0">
           <button
@@ -623,7 +623,7 @@
             onclick="toggleFullscreen()"
             class="text-white p-2 hidden"
           >
-            <i class="fa-solid fa-expand"></i>
+            <i class="fa-solid fa-expand text-white"></i>
           </button>
           <button onclick="openModal('settings-modal')" class="text-white p-2">
             <i class="fa-solid fa-cog"></i>
@@ -633,7 +633,7 @@
 
       <div
         id="settings-modal"
-        class="fixed inset-0 z-[80] bg-black/90 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4 pl-safe-plus-4 pr-safe-plus-4"
+        class="fixed inset-0 z-[80] bg-black/90 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4 pl-safe pr-safe"
       >
         <div
           class="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh] animate-in"
