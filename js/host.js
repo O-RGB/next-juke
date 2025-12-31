@@ -1,5 +1,3 @@
-// next-juke/js/host.js
-
 let wakeLock = null;
 let player, peer, peerId;
 let connections = [];
@@ -15,7 +13,7 @@ let state = {
     fit: localStorage.getItem("nj_fit") === "true",
     quality: localStorage.getItem("nj_quality") || "auto",
     extId: localStorage.getItem("nj_extId") || "",
-    autoStartAmp: localStorage.getItem("nj_autoStartAmp") === "true", // Setting ใหม่
+    autoStartAmp: localStorage.getItem("nj_autoStartAmp") === "true",
   },
   audioFx: {
     isInstalled: false,
@@ -28,7 +26,7 @@ let state = {
 };
 
 let isPlaying = false;
-// เพิ่มเงื่อนไขเช็ค MacIntel + TouchPoints เพื่อดักจับ iPad ที่เปิดโหมด Desktop Site
+
 let isIOS =
   /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -82,8 +80,6 @@ document.addEventListener("visibilitychange", async () => {
   }
 });
 
-// --- Extension Logic ---
-
 function saveExtensionId(val) {
   const cleanVal = val.trim();
   state.settings.extId = cleanVal;
@@ -97,7 +93,6 @@ function toggleAutoStartAmp() {
   updateSettingsUI();
 
   if (state.settings.autoStartAmp && state.audioFx.isInstalled) {
-    // ถ้าเปิดแล้วต่ออยู่ ให้เริ่มเลย
     startAmpCapture();
   }
 }
@@ -144,23 +139,19 @@ function checkExtension(shouldReset = false) {
     return;
   }
 
-  // แสดงสถานะว่ากำลัง PING
   updateExtStatus(false, "Pinging...", "text-yellow-500", "bg-yellow-500");
 
   try {
-    // 1. ลอง PING ก่อนเพื่อดูว่า Extension ตื่นไหม
     chrome.runtime.sendMessage(
       state.settings.extId,
       { type: "PING" },
       (pong) => {
         if (chrome.runtime.lastError) {
-          // ติดต่อไม่ได้
           state.audioFx.isInstalled = false;
           updateExtStatus(false, "Connection Failed");
           return;
         }
 
-        // 2. ถ้า Ping ผ่าน ให้ดึง State
         chrome.runtime.sendMessage(
           state.settings.extId,
           { type: "GET_STATE" },
@@ -173,18 +164,15 @@ function checkExtension(shouldReset = false) {
 
               updateExtStatus(true, "Connected");
 
-              // 3. Logic: Auto Start หรือ Reset
               if (shouldReset) {
                 chrome.runtime.sendMessage(state.settings.extId, {
                   type: "SET_PARAM",
                   key: "reset",
                   value: true,
                 });
-                // ถ้า Reset และ AutoStart เปิดอยู่ -> เริ่มใหม่ด้วย
+
                 if (state.settings.autoStartAmp) startAmpCapture();
               } else if (state.settings.autoStartAmp) {
-                // ถ้า AutoStart เปิดอยู่ และยังไม่ได้ Capture หรืออยาก Force Capture Tab นี้
-                // เราสั่ง startAmpCapture() เลย ระบบที่แก้ใน background.js จะจัดการตัด Tab เก่าให้เอง
                 startAmpCapture();
               }
             }
@@ -216,7 +204,6 @@ function updateExtStatus(
       txt.className = "text-green-400 font-mono text-xs font-bold";
       txt.innerText = text;
     } else {
-      // Custom colors for states like Pinging
       if (text === "Pinging...") {
         dot.className = `w-2 h-2 rounded-full bg-yellow-500 animate-pulse`;
         txt.className = "text-yellow-500 font-mono text-xs";
@@ -276,7 +263,7 @@ function startApp() {
     setTimeout(() => playerView.classList.remove("opacity-0"), 100);
     openModal("welcome-modal");
 
-    checkExtension(false); // เรียกครั้งแรกตอนเริ่ม App
+    checkExtension(false);
   }, 700);
 
   initPlayer();
@@ -393,7 +380,6 @@ function onPlayerStateChange(event) {
       showNowPlaying();
     }
 
-    // Auto start logic ย้ายไปอยู่ที่ checkExtension แล้ว แต่ถ้าเริ่มเล่นแล้วยังไม่ Active ก็ลองกระตุ้นอีกที
     if (
       state.audioFx.isInstalled &&
       !state.audioFx.isActive &&
@@ -517,7 +503,6 @@ function handleCommand(cmd, conn) {
           sender: cmd.user.name,
         };
 
-        // --- ส่วนที่แก้ไข: รองรับ playNext ---
         if (cmd.playNext) {
           state.queue.unshift(song);
           showToast(`Next Track: ${song.title}`, "success");
@@ -525,25 +510,22 @@ function handleCommand(cmd, conn) {
           state.queue.push(song);
           showToast(`Added: ${song.title}`, "success");
         }
-        // ---------------------------------
 
         renderDashboard();
         broadcastState();
         if (!state.currentSong && state.queue.length === 1) triggerNext();
       });
       break;
-    // --- ส่วนที่แก้ไข: เพิ่มคำสั่งเลื่อนคิว ---
+
     case "MOVE_QUEUE":
       if (isMaster(cmd.user.id)) {
         const { index, direction } = cmd;
         if (direction === -1 && index > 0) {
-          // Swap ขึ้น
           [state.queue[index], state.queue[index - 1]] = [
             state.queue[index - 1],
             state.queue[index],
           ];
         } else if (direction === 1 && index < state.queue.length - 1) {
-          // Swap ลง
           [state.queue[index], state.queue[index + 1]] = [
             state.queue[index + 1],
             state.queue[index],
@@ -553,7 +535,7 @@ function handleCommand(cmd, conn) {
         broadcastState();
       }
       break;
-    // -------------------------------------
+
     case "PLAY":
       if (isMaster(cmd.user.id)) player.playVideo();
       break;
@@ -860,7 +842,7 @@ function updateSettingsUI() {
 
   setBtnState("btn-reqInt", state.settings.reqInt);
   setBtnState("btn-fit", state.settings.fit);
-  setBtnState("btn-autoStartAmp", state.settings.autoStartAmp); // UI สำหรับ Auto Start
+  setBtnState("btn-autoStartAmp", state.settings.autoStartAmp);
 
   const wrap = document.getElementById("video-wrapper");
   if (state.settings.fit) {
@@ -875,7 +857,6 @@ function updateSettingsUI() {
 }
 
 function toggleFullscreen() {
-  // ดึง method ที่รองรับ (รวมถึง webkit สำหรับ Safari/iPad)
   const doc = document;
   const docEl = doc.documentElement;
 
@@ -884,7 +865,6 @@ function toggleFullscreen() {
   const exitMethod = doc.exitFullscreen || doc.webkitExitFullscreen;
   const isFullscreen = doc.fullscreenElement || doc.webkitFullscreenElement;
 
-  // เรียกใช้ method ที่มีอยู่
   if (!isFullscreen && requestMethod) {
     requestMethod.call(docEl);
   } else if (isFullscreen && exitMethod) {
