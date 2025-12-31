@@ -15,6 +15,7 @@ let state = {
     fit: localStorage.getItem("nj_fit") === "true",
     quality: localStorage.getItem("nj_quality") || "auto",
     extId: localStorage.getItem("nj_extId") || "",
+    autoStartAmp: localStorage.getItem("nj_autoStartAmp") === "true", // Setting ใหม่
   },
   audioFx: {
     isInstalled: false,
@@ -87,6 +88,39 @@ function saveExtensionId(val) {
   checkExtension(true);
 }
 
+function toggleAutoStartAmp() {
+  state.settings.autoStartAmp = !state.settings.autoStartAmp;
+  localStorage.setItem("nj_autoStartAmp", state.settings.autoStartAmp);
+  updateSettingsUI();
+
+  if (state.settings.autoStartAmp && state.audioFx.isInstalled) {
+    // ถ้าเปิดแล้วต่ออยู่ ให้เริ่มเลย
+    startAmpCapture();
+  }
+}
+
+function startAmpCapture() {
+  if (!state.settings.extId) return;
+  console.log("Starting Amp Capture...");
+  try {
+    chrome.runtime.sendMessage(
+      state.settings.extId,
+      {
+        type: "START_CAPTURE",
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error("Start Capture Error:", chrome.runtime.lastError);
+        } else {
+          console.log("Capture Started:", response);
+        }
+      }
+    );
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 function checkExtension(shouldReset = false) {
   const inputEl = document.getElementById("input-ext-id");
 
@@ -107,36 +141,54 @@ function checkExtension(shouldReset = false) {
     return;
   }
 
+  // แสดงสถานะว่ากำลัง PING
+  updateExtStatus(false, "Pinging...", "text-yellow-500", "bg-yellow-500");
+
   try {
+    // 1. ลอง PING ก่อนเพื่อดูว่า Extension ตื่นไหม
     chrome.runtime.sendMessage(
       state.settings.extId,
-      { type: "GET_STATE" },
-      (response) => {
+      { type: "PING" },
+      (pong) => {
         if (chrome.runtime.lastError) {
+          // ติดต่อไม่ได้
           state.audioFx.isInstalled = false;
-          updateExtStatus(false, "Error / Not Found");
-        } else {
-          state.audioFx.isInstalled = true;
-          if (response) {
-            state.audioFx.isActive = response.isAudioActive;
-            state.audioFx.pitch = response.pitch || 0;
-            state.audioFx.reverb = response.reverb || 0;
-          }
-          updateExtStatus(true, "Connected");
-
-          if (shouldReset) {
-            chrome.runtime.sendMessage(state.settings.extId, {
-              type: "SET_PARAM",
-              key: "reset",
-              value: true,
-            });
-            state.audioFx.pitch = 0;
-            state.audioFx.reverb = 0;
-            state.audioFx.pan = 0;
-          }
+          updateExtStatus(false, "Connection Failed");
+          return;
         }
-        renderAmpStatus();
-        broadcastState();
+
+        // 2. ถ้า Ping ผ่าน ให้ดึง State
+        chrome.runtime.sendMessage(
+          state.settings.extId,
+          { type: "GET_STATE" },
+          (response) => {
+            if (response) {
+              state.audioFx.isInstalled = true;
+              state.audioFx.isActive = response.isAudioActive;
+              state.audioFx.pitch = response.pitch || 0;
+              state.audioFx.reverb = response.reverb || 0;
+
+              updateExtStatus(true, "Connected");
+
+              // 3. Logic: Auto Start หรือ Reset
+              if (shouldReset) {
+                chrome.runtime.sendMessage(state.settings.extId, {
+                  type: "SET_PARAM",
+                  key: "reset",
+                  value: true,
+                });
+                // ถ้า Reset และ AutoStart เปิดอยู่ -> เริ่มใหม่ด้วย
+                if (state.settings.autoStartAmp) startAmpCapture();
+              } else if (state.settings.autoStartAmp) {
+                // ถ้า AutoStart เปิดอยู่ และยังไม่ได้ Capture หรืออยาก Force Capture Tab นี้
+                // เราสั่ง startAmpCapture() เลย ระบบที่แก้ใน background.js จะจัดการตัด Tab เก่าให้เอง
+                startAmpCapture();
+              }
+            }
+            renderAmpStatus();
+            broadcastState();
+          }
+        );
       }
     );
   } catch (e) {
@@ -146,7 +198,12 @@ function checkExtension(shouldReset = false) {
   }
 }
 
-function updateExtStatus(isOk, text) {
+function updateExtStatus(
+  isOk,
+  text,
+  textColor = "text-zinc-400",
+  dotColor = "bg-red-500"
+) {
   const dot = document.getElementById("ext-status-dot");
   const txt = document.getElementById("ext-status-text");
   if (dot && txt) {
@@ -154,11 +211,16 @@ function updateExtStatus(isOk, text) {
       dot.className =
         "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]";
       txt.className = "text-green-400 font-mono text-xs font-bold";
-      txt.innerText = "Connected";
+      txt.innerText = text;
     } else {
-      dot.className =
-        "w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
-      txt.className = "text-zinc-400 font-mono text-xs";
+      // Custom colors for states like Pinging
+      if (text === "Pinging...") {
+        dot.className = `w-2 h-2 rounded-full bg-yellow-500 animate-pulse`;
+        txt.className = "text-yellow-500 font-mono text-xs";
+      } else {
+        dot.className = `w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]`;
+        txt.className = "text-zinc-400 font-mono text-xs";
+      }
       txt.innerText = text;
     }
   }
@@ -211,7 +273,7 @@ function startApp() {
     setTimeout(() => playerView.classList.remove("opacity-0"), 100);
     openModal("welcome-modal");
 
-    checkExtension(true);
+    checkExtension(false); // เรียกครั้งแรกตอนเริ่ม App
   }, 700);
 
   initPlayer();
@@ -328,19 +390,13 @@ function onPlayerStateChange(event) {
       showNowPlaying();
     }
 
+    // Auto start logic ย้ายไปอยู่ที่ checkExtension แล้ว แต่ถ้าเริ่มเล่นแล้วยังไม่ Active ก็ลองกระตุ้นอีกที
     if (
       state.audioFx.isInstalled &&
       !state.audioFx.isActive &&
-      state.settings.extId
+      state.settings.autoStartAmp
     ) {
-      try {
-        chrome.runtime.sendMessage(state.settings.extId, {
-          type: "START_CAPTURE",
-          streamId: null,
-        });
-      } catch (e) {
-        console.error(e);
-      }
+      startAmpCapture();
     }
 
     checkAudioContext();
@@ -457,13 +513,44 @@ function handleCommand(cmd, conn) {
             `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
           sender: cmd.user.name,
         };
-        state.queue.push(song);
-        showToast(`Added: ${song.title}`, "success");
+
+        // --- ส่วนที่แก้ไข: รองรับ playNext ---
+        if (cmd.playNext) {
+          state.queue.unshift(song);
+          showToast(`Next Track: ${song.title}`, "success");
+        } else {
+          state.queue.push(song);
+          showToast(`Added: ${song.title}`, "success");
+        }
+        // ---------------------------------
+
         renderDashboard();
         broadcastState();
         if (!state.currentSong && state.queue.length === 1) triggerNext();
       });
       break;
+    // --- ส่วนที่แก้ไข: เพิ่มคำสั่งเลื่อนคิว ---
+    case "MOVE_QUEUE":
+      if (isMaster(cmd.user.id)) {
+        const { index, direction } = cmd;
+        if (direction === -1 && index > 0) {
+          // Swap ขึ้น
+          [state.queue[index], state.queue[index - 1]] = [
+            state.queue[index - 1],
+            state.queue[index],
+          ];
+        } else if (direction === 1 && index < state.queue.length - 1) {
+          // Swap ลง
+          [state.queue[index], state.queue[index + 1]] = [
+            state.queue[index + 1],
+            state.queue[index],
+          ];
+        }
+        renderDashboard();
+        broadcastState();
+      }
+      break;
+    // -------------------------------------
     case "PLAY":
       if (isMaster(cmd.user.id)) player.playVideo();
       break;
@@ -770,6 +857,7 @@ function updateSettingsUI() {
 
   setBtnState("btn-reqInt", state.settings.reqInt);
   setBtnState("btn-fit", state.settings.fit);
+  setBtnState("btn-autoStartAmp", state.settings.autoStartAmp); // UI สำหรับ Auto Start
 
   const wrap = document.getElementById("video-wrapper");
   if (state.settings.fit) {

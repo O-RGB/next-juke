@@ -566,7 +566,7 @@
 
       <footer
         id="main-footer"
-        class="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black via-black/80 to-transparent h-28 flex items-end px-6 pl-safe-plus-4 pr-safe-plus-4 gap-4 fade-transition pb-safe-plus-8 transition-all duration-500 transform"
+        class="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black via-black/80 to-transparent h-28 flex items-end px-6 pl-safe-plus-4 pr-safe-plus-4 gap-1 fade-transition pb-safe-plus-8 transition-all duration-500 transform"
       >
         <div class="flex items-center gap-3 shrink-0">
           <button
@@ -582,7 +582,7 @@
             <i class="fa-solid fa-forward-step text-xl"></i>
           </button>
         </div>
-        <div class="flex-1 flex items-center gap-4 mb-4">
+        <div class="flex-1 flex items-center gap-4 mb-[19px]">
           <span
             id="time-curr"
             class="text-[10px] font-mono text-gray-300 w-8 text-right"
@@ -611,7 +611,7 @@
           >
         </div>
         <div
-          class="flex items-center gap-3 border-l border-white/10 pl-4 mb-1.5"
+          class="flex items-center gap-3 border-l border-white/10 pl-2 mb-1.5"
         >
           <button
             id="btn-fullscreen"
@@ -754,6 +754,26 @@
                         </button>
                       </div>
                     </div>
+
+                    <div
+                      class="flex items-center justify-between pt-2 border-t border-white/5"
+                    >
+                      <div>
+                        <h4 class="font-bold text-xs text-white">Auto Start</h4>
+                        <p class="text-[10px] text-zinc-500">
+                          เริ่มจับเสียงทันทีเมื่อเปิดเว็บ
+                        </p>
+                      </div>
+                      <button
+                        onclick="toggleAutoStartAmp()"
+                        id="btn-autoStartAmp"
+                        class="w-10 h-6 rounded-full bg-zinc-700 relative transition-colors"
+                      >
+                        <div
+                          class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform"
+                        ></div>
+                      </button>
+                    </div>
                   </div>
 
                   <div
@@ -770,7 +790,6 @@
                     </button>
                   </div>
                 </div>
-
                 <div
                   class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-0 relative overflow-hidden group flex flex-col"
                 >
@@ -785,7 +804,6 @@
                       />
                     </div>
                   </div>
-
                   <div
                     class="relative z-10 flex flex-col justify-end h-full p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent"
                   >

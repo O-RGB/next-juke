@@ -149,6 +149,9 @@ function updateState(data) {
     document.getElementById("user-role").innerText = "👑 DJ MASTER";
     document.getElementById("user-role").classList.add("text-pink-500");
 
+    // Show DJ Add Options (Checkbox)
+    document.getElementById("dj-add-options").classList.remove("hidden");
+
     const fxBtn = document.getElementById("fx-btn-container");
     if (fxBtn) fxBtn.classList.remove("hidden");
 
@@ -162,6 +165,9 @@ function updateState(data) {
     document.getElementById("user-role").innerText = "ผู้ร่วมงาน";
     document.getElementById("user-role").classList.remove("text-pink-500");
 
+    // Hide DJ Add Options
+    document.getElementById("dj-add-options").classList.add("hidden");
+
     const fxBtn = document.getElementById("fx-btn-container");
     if (fxBtn) fxBtn.classList.add("hidden");
   }
@@ -172,6 +178,8 @@ function updateState(data) {
 
 function updateQueueUI(queue) {
   const qList = document.getElementById("queue-list-modal");
+  const isMaster = user && user.id === masterId;
+
   if (queue.length === 0) {
     qList.innerHTML =
       '<div class="text-center text-zinc-600 text-xs py-4">ยังไม่มีเพลงในคิว</div>';
@@ -180,12 +188,30 @@ function updateQueueUI(queue) {
       .map(
         (s, i) => `
             <div class="flex gap-3 items-center p-3 bg-zinc-800/30 rounded border border-white/5">
-                <span class="text-zinc-500 font-mono text-xs w-4 text-center">${
-                  i + 1
-                }</span>
+                ${
+                  isMaster
+                    ? `<div class="flex flex-col gap-1 shrink-0 mr-1">
+                          <button onclick="sendMoveQueue(${i}, -1)" class="w-8 h-6 bg-zinc-700/50 hover:bg-zinc-700 rounded flex items-center justify-center text-zinc-300 ${
+                        i === 0 ? "opacity-30 pointer-events-none" : ""
+                      }">
+                              <i class="fa-solid fa-chevron-up text-xs"></i>
+                          </button>
+                          <button onclick="sendMoveQueue(${i}, 1)" class="w-8 h-6 bg-zinc-700/50 hover:bg-zinc-700 rounded flex items-center justify-center text-zinc-300 ${
+                        i === queue.length - 1
+                          ? "opacity-30 pointer-events-none"
+                          : ""
+                      }">
+                              <i class="fa-solid fa-chevron-down text-xs"></i>
+                          </button>
+                      </div>`
+                    : `<span class="text-zinc-500 font-mono text-xs w-4 text-center">${
+                        i + 1
+                      }</span>`
+                }
+                
                 <img src="${
                   s.thumbnail
-                }" class="w-10 h-10 rounded object-cover opacity-80 bg-zinc-800">
+                }" class="w-10 h-10 rounded object-cover opacity-80 bg-zinc-800 shrink-0">
                 <div class="flex-1 min-w-0">
                     <div class="text-sm font-medium text-white truncate">${
                       s.title
@@ -228,17 +254,36 @@ function sendAction(type, data = {}) {
   if (conn && conn.open) conn.send({ type, user, ...data });
 }
 
+function sendMoveQueue(index, direction) {
+  sendAction("MOVE_QUEUE", { index, direction });
+}
+
 function addSong() {
   const url = document.getElementById("url-input").value;
   if (!url) return;
-  conn.send({ type: "ADD_SONG", url, user });
+
+  // ตรวจสอบสถานะ Checkbox แทรกคิว
+  const chk = document.getElementById("chk-play-next");
+  const playNext = chk && !chk.classList.contains("hidden") && chk.checked;
+
+  conn.send({ type: "ADD_SONG", url, user, playNext: playNext });
+
   document.getElementById("url-input").value = "";
   document.getElementById("preview-box").classList.add("hidden");
+
+  // Reset ค่า Checkbox ทันที
+  if (chk) chk.checked = false;
+
   const btn = document.getElementById("add-btn");
   btn.disabled = true;
   btn.className =
     "w-12 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-gray-500 transition-colors";
-  showToast("ส่งเพลงแล้ว!");
+
+  if (playNext) {
+    showToast("แทรกเพลงคิวถัดไปเรียบร้อย!");
+  } else {
+    showToast("ส่งเพลงแล้ว!");
+  }
 }
 
 function updateFxUI(audioFx) {

@@ -1,6 +1,3 @@
-/* next-juke/css/style.css */
-
-/* Base Styles */
 body {
   background-color: #000;
   color: white;
@@ -9,7 +6,6 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Utilities */
 .hidden {
   display: none !important;
 }
@@ -21,7 +17,6 @@ body {
   cursor: pointer;
 }
 
-/* Safe Area Utilities */
 .pt-safe {
   padding-top: calc(1rem + env(safe-area-inset-top)) !important;
 }
@@ -38,7 +33,6 @@ body {
   padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important;
 }
 
-/* Scrollbar Customization */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -56,53 +50,44 @@ body {
   border-radius: 4px;
 }
 
-/* --- COMPONENT SYSTEM (Unified UI) --- */
-
-/* Glass Effect */
 .c-glass {
   background: rgba(24, 24, 27, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Standard Modal Wrapper (Fixed Logic) */
 .c-modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: 80;
-  background-color: rgba(0, 0, 0, 0.85); /* Black overlay 85% */
+  background-color: rgba(0, 0, 0, 0.85);
 
-  /* Flexbox Centering with Scroll Support */
   display: flex;
   flex-direction: column;
   padding: 1rem;
   padding-left: calc(1rem + env(safe-area-inset-left));
   padding-right: calc(1rem + env(safe-area-inset-right));
 
-  /* Key for scrolling: Don't force center if content is too big */
   overflow-y: auto;
   transition: opacity 0.2s ease;
 }
 
-/* Standard Modal Content */
 .c-modal-content {
   width: 100%;
-  max-width: 32rem; /* max-w-lg */
-  background-color: #18181b; /* zinc-900 */
-  border: 1px solid #27272a; /* zinc-800 */
+  max-width: 40rem;
+  background-color: #18181b;
+  border: 1px solid #27272a;
   border-radius: 1rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
 
-  /* Auto margins handle vertical centering AND scrolling when overflow */
   margin: auto;
 
-  max-height: 85vh; /* Default height constraint */
+  max-height: 84vh;
   overflow: hidden;
   animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Landscape Mobile Optimized Rules (แก้ไขใหม่ทั้งหมด) */
 @media (max-height: 700px) and (orientation: landscape) {
   .c-modal-backdrop {
     padding: 0;
@@ -111,10 +96,10 @@ body {
   }
 
   .c-modal-content {
-    width: 85%;
+    width: 90%;
     max-width: 700px;
     height: auto;
-    max-height: 90dvh; /* ใช้หน่วย dvh เพื่อหลบ Address bar */
+    max-height: 90dvh;
     margin: 0;
     border-radius: 12px;
     display: flex;
@@ -122,17 +107,11 @@ body {
     overflow: hidden;
   }
 
-  /* Header คงที่ */
   .c-modal-header {
     flex-shrink: 0;
     padding: 0.5rem 1rem;
     min-height: 40px;
-    background-color: rgba(
-      24,
-      24,
-      27,
-      0.95
-    ); /* ใส่สีพื้นหลังให้ทึบหน่อยตอนเลื่อนเนื้อหาผ่าน */
+    background-color: rgba(24, 24, 27, 0.95);
     z-index: 10;
   }
   .c-modal-header h3 {
@@ -142,7 +121,6 @@ body {
     padding: 0.25rem !important;
   }
 
-  /* Body เลื่อนได้ */
   .c-modal-body {
     flex: 1;
     overflow-y: auto !important;
@@ -150,7 +128,6 @@ body {
     overscroll-behavior: contain;
   }
 
-  /* Footer คงที่ (ปุ่มกดด้านล่าง) */
   .c-modal-footer {
     flex-shrink: 0;
     padding: 0.5rem 1rem;
@@ -159,13 +136,12 @@ body {
     z-index: 10;
   }
 
-  /* ปรับแต่ง Element ภายในให้เล็กลง */
   .c-range-wrapper {
     height: 1.5rem;
   }
   .eq-slider-wrapper {
     height: 90px;
-  } /* ลดความสูง EQ Slider */
+  }
   .eq-slider-input {
     width: 80px;
   }
@@ -193,7 +169,6 @@ body {
   overscroll-behavior: contain;
 }
 
-/* Standard Buttons */
 .c-btn {
   display: inline-flex;
   align-items: center;
@@ -238,7 +213,6 @@ body {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-/* Compact Buttons for Landscape */
 @media (max-height: 500px) and (orientation: landscape) {
   .c-btn {
     padding: 0.4rem 0.8rem;
@@ -247,7 +221,6 @@ body {
   }
 }
 
-/* Standard Range Slider */
 .c-range-wrapper {
   position: relative;
   height: 2rem;
@@ -286,7 +259,6 @@ input[type="range"]:active::-webkit-slider-thumb {
   transform: scale(1.2);
 }
 
-/* EQ Vertical Slider Customization */
 .eq-slider-wrapper {
   position: relative;
   width: 100%;
@@ -305,7 +277,6 @@ input[type="range"]:active::-webkit-slider-thumb {
   background: transparent;
 }
 
-/* Animations */
 .fade-transition {
   transition: opacity 0.5s ease-in-out;
 }
@@ -335,7 +306,6 @@ input[type="range"]:active::-webkit-slider-thumb {
   }
 }
 
-/* --- IDLE MODE STYLES --- */
 .idle-mode #header-bg {
   opacity: 0 !important;
 }
