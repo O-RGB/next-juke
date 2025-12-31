@@ -28,7 +28,10 @@ let state = {
 };
 
 let isPlaying = false;
-let isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+// เพิ่มเงื่อนไขเช็ค MacIntel + TouchPoints เพื่อดักจับ iPad ที่เปิดโหมด Desktop Site
+let isIOS =
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 let hasInteracted = false;
 let lastPlayedSongId = null;
 let idleTimer;
