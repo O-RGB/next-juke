@@ -22,7 +22,7 @@ let state = {
     pitch: 0,
     reverb: 0,
     pan: 0,
-    eq: true, // สมมติว่า EQ ON ถ้า Ext ทำงาน
+    eq: true,
   },
 };
 
@@ -84,7 +84,7 @@ function saveExtensionId(val) {
   const cleanVal = val.trim();
   state.settings.extId = cleanVal;
   localStorage.setItem("nj_extId", cleanVal);
-  checkExtension(true); // true = force reset
+  checkExtension(true);
 }
 
 function checkExtension(shouldReset = false) {
@@ -121,7 +121,6 @@ function checkExtension(shouldReset = false) {
             state.audioFx.isActive = response.isAudioActive;
             state.audioFx.pitch = response.pitch || 0;
             state.audioFx.reverb = response.reverb || 0;
-            // state.audioFx.eq = response.eqActive || true; // Future proofing
           }
           updateExtStatus(true, "Connected");
 
@@ -165,7 +164,6 @@ function updateExtStatus(isOk, text) {
   }
 }
 
-// ฟังก์ชันแสดง Amp Status แบบ UI สวยงามและ Responsive
 function renderAmpStatus() {
   const el = document.getElementById("header-amp-status");
   if (!el) return;
@@ -173,9 +171,8 @@ function renderAmpStatus() {
   if (state.audioFx.isInstalled) {
     const p =
       state.audioFx.pitch > 0 ? `+${state.audioFx.pitch}` : state.audioFx.pitch;
-    const r = Math.round(state.audioFx.reverb * 100); // 0.5 -> 50
+    const r = Math.round(state.audioFx.reverb * 100);
 
-    // HTML Structure แบบ Icon + Text (ซ่อน Text เมื่อจอเล็ก)
     el.innerHTML = `
         <div class="flex items-center gap-3">
             <div class="flex items-center gap-1.5">
@@ -200,11 +197,7 @@ function renderAmpStatus() {
   }
 }
 
-window.showAmpSetupModal = function () {
-  // ไม่ได้ใช้แต่คงไว้เพื่อความเข้ากันได้
-};
-
-// -----------------------
+window.showAmpSetupModal = function () {};
 
 function startApp() {
   isAppStarted = true;
@@ -510,24 +503,16 @@ function handleCommand(cmd, conn) {
             state.audioFx.reverb = 0;
           }
 
-          // แสดง Toast บน Host เมื่อมีการปรับ Effect
-          let msg = "";
-          if (cmd.key === "pitch")
-            msg = `Pitch: ${cmd.value > 0 ? "+" : ""}${cmd.value}`;
-          else if (cmd.key === "reverb")
-            msg = `Reverb: ${Math.round(cmd.value * 100)}%`;
-          else if (cmd.key === "eq") msg = `EQ Band ${cmd.index}: ${cmd.value}`;
-          else if (cmd.key === "reset") msg = "Audio FX Reset";
+          if (cmd.key === "reset") {
+            showToast("Audio FX Reset", "info");
+          }
 
-          if (msg) showToast(msg, "info");
-
-          renderAmpStatus(); // อัปเดต UI เมื่อค่าเปลี่ยน
+          renderAmpStatus();
           broadcastState();
         } else {
-          // แจ้ง Remote ว่า Host ไม่มี Amp
           showToast("Amp Extension Error", "info");
-          state.audioFx.isInstalled = false; // ปรับ State
-          broadcastState(); // ให้ Remote รู้ว่า Amp หลุด
+          state.audioFx.isInstalled = false;
+          broadcastState();
         }
       }
       break;
@@ -713,7 +698,6 @@ function handleSeek(val) {
   }
 }
 
-// อัปเดต Idle Bar ด้วยใน Loop
 setInterval(() => {
   if (player && isPlaying) {
     const c = player.getCurrentTime();
@@ -727,25 +711,11 @@ setInterval(() => {
       document.getElementById("prog-bar").style.width = `${pct}%`;
       document.getElementById("seek-slider").value = pct;
 
-      // Update Idle Line
       const idleLine = document.getElementById("idle-progress-line");
       if (idleLine) idleLine.style.width = `${pct}%`;
     }
   }
 }, 1000);
-
-function openModal(id) {
-  const el = document.getElementById(id);
-  el.classList.remove("hidden");
-  void el.offsetWidth;
-  el.classList.remove("opacity-0");
-}
-
-function closeModal(id) {
-  const el = document.getElementById(id);
-  el.classList.add("opacity-0");
-  setTimeout(() => el.classList.add("hidden"), 300);
-}
 
 function switchTab(tab) {
   ["dashboard", "settings", "nextamp"].forEach((t) => {
@@ -818,14 +788,11 @@ function toggleFullscreen() {
   else if (document.exitFullscreen) document.exitFullscreen();
 }
 
-// Reset Idle Logic: ถ้าไม่มีการขยับและไม่ได้เปิด Modal ให้เข้า Idle Mode
 function resetIdle() {
-  // ลบ class idle-mode ออกเพื่อให้ UI แสดงกลับมา
   document.body.classList.remove("idle-mode");
 
   clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
-    // เช็คว่า Modal ปิดอยู่หรือไม่
     const settingsHidden = document
       .getElementById("settings-modal")
       .classList.contains("hidden");
@@ -833,7 +800,6 @@ function resetIdle() {
       .getElementById("welcome-modal")
       .classList.contains("hidden");
 
-    // ถ้า App เริ่มแล้ว และไม่มี Modal เปิดอยู่ ให้เข้า Idle
     if (settingsHidden && welcomeHidden && isAppStarted) {
       document.body.classList.add("idle-mode");
     }

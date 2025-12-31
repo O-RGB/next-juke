@@ -10,110 +10,349 @@ body {
 }
 
 /* Utilities */
-.hidden { display: none !important; }
-.opacity-0-force { opacity: 0 !important; pointer-events: none !important; }
-.cursor-pointer { cursor: pointer; }
+.hidden {
+  display: none !important;
+}
+.opacity-0-force {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.cursor-pointer {
+  cursor: pointer;
+}
 
 /* Safe Area Utilities */
-.pt-safe { padding-top: calc(1rem + env(safe-area-inset-top)) !important; }
-.pb-safe { padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important; }
-.pl-safe { padding-left: calc(1rem + env(safe-area-inset-left)) !important; }
-.pr-safe { padding-right: calc(1rem + env(safe-area-inset-right)) !important; }
-/* Added extra padding for pushing footer up */
-.pb-safe-plus-8 { padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important; }
+.pt-safe {
+  padding-top: calc(1rem + env(safe-area-inset-top)) !important;
+}
+.pb-safe {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+}
+.pl-safe {
+  padding-left: calc(1rem + env(safe-area-inset-left)) !important;
+}
+.pr-safe {
+  padding-right: calc(1rem + env(safe-area-inset-right)) !important;
+}
+.pb-safe-plus-8 {
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important;
+}
 
 /* Scrollbar Customization */
-.scrollbar-hide::-webkit-scrollbar { display: none; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
 
-/* UI Components */
-.glass-panel {
-  background: rgba(24, 24, 27, 0.6);
-  /* backdrop-filter: blur(12px); */
+/* --- COMPONENT SYSTEM (Unified UI) --- */
+
+/* Glass Effect */
+.c-glass {
+  background: rgba(24, 24, 27, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Range Slider */
+/* Standard Modal Wrapper (Fixed Logic) */
+.c-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background-color: rgba(0, 0, 0, 0.85); /* Black overlay 85% */
+
+  /* Flexbox Centering with Scroll Support */
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  padding-left: calc(1rem + env(safe-area-inset-left));
+  padding-right: calc(1rem + env(safe-area-inset-right));
+
+  /* Key for scrolling: Don't force center if content is too big */
+  overflow-y: auto;
+  transition: opacity 0.2s ease;
+}
+
+/* Standard Modal Content */
+.c-modal-content {
+  width: 100%;
+  max-width: 32rem; /* max-w-lg */
+  background-color: #18181b; /* zinc-900 */
+  border: 1px solid #27272a; /* zinc-800 */
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+
+  /* Auto margins handle vertical centering AND scrolling when overflow */
+  margin: auto;
+
+  max-height: 85vh; /* Default height constraint */
+  overflow: hidden;
+  animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Landscape Mobile Optimized Rules (แก้ไขใหม่ทั้งหมด) */
+@media (max-height: 700px) and (orientation: landscape) {
+  .c-modal-backdrop {
+    padding: 0;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .c-modal-content {
+    width: 85%;
+    max-width: 700px;
+    height: auto;
+    max-height: 90dvh; /* ใช้หน่วย dvh เพื่อหลบ Address bar */
+    margin: 0;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header คงที่ */
+  .c-modal-header {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+    min-height: 40px;
+    background-color: rgba(
+      24,
+      24,
+      27,
+      0.95
+    ); /* ใส่สีพื้นหลังให้ทึบหน่อยตอนเลื่อนเนื้อหาผ่าน */
+    z-index: 10;
+  }
+  .c-modal-header h3 {
+    font-size: 1rem;
+  }
+  .c-modal-header button {
+    padding: 0.25rem !important;
+  }
+
+  /* Body เลื่อนได้ */
+  .c-modal-body {
+    flex: 1;
+    overflow-y: auto !important;
+    padding: 0.75rem 1rem;
+    overscroll-behavior: contain;
+  }
+
+  /* Footer คงที่ (ปุ่มกดด้านล่าง) */
+  .c-modal-footer {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background-color: rgba(24, 24, 27, 0.95);
+    z-index: 10;
+  }
+
+  /* ปรับแต่ง Element ภายในให้เล็กลง */
+  .c-range-wrapper {
+    height: 1.5rem;
+  }
+  .eq-slider-wrapper {
+    height: 90px;
+  } /* ลดความสูง EQ Slider */
+  .eq-slider-input {
+    width: 80px;
+  }
+
+  .c-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    min-height: 32px;
+  }
+}
+
+.c-modal-header {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.c-modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Standard Buttons */
+.c-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  transition: all 0.1s;
+  cursor: pointer;
+  user-select: none;
+}
+.c-btn:active {
+  transform: scale(0.96);
+}
+
+.c-btn-primary {
+  background-color: #dc2626;
+  color: white;
+  box-shadow: 0 4px 14px 0 rgba(220, 38, 38, 0.3);
+}
+.c-btn-primary:hover {
+  background-color: #ef4444;
+}
+
+.c-btn-secondary {
+  background-color: #27272a;
+  color: #e4e4e7;
+  border: 1px solid #3f3f46;
+}
+.c-btn-secondary:hover {
+  background-color: #3f3f46;
+  color: white;
+}
+
+.c-btn-ghost {
+  background-color: transparent;
+  color: #a1a1aa;
+}
+.c-btn-ghost:hover {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Compact Buttons for Landscape */
+@media (max-height: 500px) and (orientation: landscape) {
+  .c-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    min-height: 32px;
+  }
+}
+
+/* Standard Range Slider */
+.c-range-wrapper {
+  position: relative;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  width: 100%;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  background: #3f3f46;
+  border-radius: 3px;
+}
+
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  height: 16px; width: 16px;
-  border-radius: 50%; background: #ffffff;
-  cursor: pointer; margin-top: -6px;
-  opacity: 0; transition: opacity 0.2s;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  margin-top: -7px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s;
 }
-input[type="range"]:hover::-webkit-slider-thumb { opacity: 1; }
+
+input[type="range"]:active::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+
+/* EQ Vertical Slider Customization */
+.eq-slider-wrapper {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  display: flex;
+  justify-content: center;
+}
+.eq-slider-input {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 140px;
+  height: 40px;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  margin: 0;
+  background: transparent;
+}
 
 /* Animations */
-.fade-transition { transition: opacity 0.5s ease-in-out; }
-.fade-in { animation: fadeIn 0.3s ease-in-out; }
+.fade-transition {
+  transition: opacity 0.5s ease-in-out;
+}
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* --- IDLE MODE STYLES (Updated) --- */
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
-/* 1. Header Background: สั่ง Opacity 0 เพื่อให้พื้นหลังดำจางหายไป (นุ่มนวล) */
+/* --- IDLE MODE STYLES --- */
 .idle-mode #header-bg {
-    opacity: 0 !important;
+  opacity: 0 !important;
 }
-
-/* 2. Header Content: ซ่อน Logo/Title ด้านซ้าย */
 .idle-mode .header-content-group {
-    opacity: 0;
-    transform: translateY(-20px);
-    pointer-events: none;
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
 }
-
-/* 3. Header Status: บังคับแสดงผลเสมอ และกดได้ */
 .idle-mode .header-status-group {
-    opacity: 1 !important;
-    pointer-events: auto;
+  opacity: 1 !important;
+  pointer-events: auto;
 }
-
-/* 4. Footer: ซ่อน Footer ใหญ่ */
 .idle-mode #main-footer {
-    opacity: 0;
-    transform: translateY(20px);
-    pointer-events: none;
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
 }
-
-/* 5. Slim Progress Bar (แสดงเมื่อ Idle) - เลื่อนขึ้นมาจากด้านล่าง */
 .idle-mode #idle-progress-line {
-    transform: translateY(0) !important;
-}
-
-/* --- Compact Modal Styles (SweetAlert2) --- */
-.compact-modal-popup {
-    border: 1px solid #374151 !important;
-    max-height: 95vh;
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-}
-.compact-modal-title {
-    font-size: 1.1rem !important;
-    padding: 0.5rem 1rem 0 !important;
-}
-.compact-modal-content {
-    margin: 0.5em 0 !important;
-    overflow: hidden !important; 
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-}
-.compact-modal-actions {
-    margin-top: 5px !important;
-    margin-bottom: 5px !important;
-}
-
-@media (max-height: 500px) {
-    .compact-modal-popup {
-        padding: 2px !important;
-    }
-    .swal2-input {
-        margin: 0.5em auto !important;
-        height: 2em !important;
-    }
+  transform: translateY(0) !important;
 }

@@ -16,7 +16,8 @@ window.onload = () => {
     return;
   }
 
-  injectRemoteUI();
+  const main = document.getElementById("remote-ui").querySelector(".flex-1");
+  if (main) main.classList.add("overflow-y-auto", "overscroll-contain");
 
   if (clientProfile && clientProfile.name) {
     document.getElementById("username-input").value = clientProfile.name;
@@ -130,23 +131,13 @@ function updateState(data) {
   const isMaster = user.id === masterId;
 
   if (data.audioFx) {
-    // แจ้งเตือน Remote หาก Host Amp Error หรือหลุด
     if (isHostFxInstalled && !data.audioFx.isInstalled) {
-      if (typeof Swal !== "undefined") {
-        Swal.fire({
-          icon: "error",
-          title: "Amp Disconnected!",
-          text: "Host PC lost connection to NextAmp Extension.",
-          timer: 2000,
-          showConfirmButton: false,
-          background: "#1f2937",
-          color: "#fff",
-        });
-      } else {
-        showToast("⚠️ Host Amp Disconnected!");
-      }
+      showAlert(
+        "Amp Disconnected!",
+        "Host PC lost connection to NextAmp Extension.",
+        "error"
+      );
     }
-
     isHostFxInstalled = data.audioFx.isInstalled;
     updateFxBtnAppearance();
   }
@@ -225,20 +216,11 @@ function checkFxAvailability(callback) {
   if (isHostFxInstalled) {
     callback();
   } else {
-    if (typeof Swal !== "undefined") {
-      Swal.fire({
-        icon: "warning",
-        title: "Extension Required",
-        text: "Host PC must have NextAmp Extension installed.",
-        background: "#1f2937",
-        color: "#fff",
-        confirmButtonColor: "#3b82f6",
-      });
-    } else {
-      alert(
-        "Host PC must have NextAmp Extension installed to use this feature."
-      );
-    }
+    showAlert(
+      "Extension Required",
+      "Host PC must have NextAmp Extension installed to use this feature.",
+      "warning"
+    );
   }
 }
 
@@ -273,7 +255,6 @@ function updateFxUI(audioFx) {
 
 function setFx(key, value) {
   sendAction("SET_FX", { key, value: parseFloat(value) });
-
   if (key === "reverb")
     document.getElementById("reverb-val-text").innerText =
       Math.round(value * 100) + "%";
@@ -298,6 +279,22 @@ function resetFx() {
   document.getElementById("pitch-val-text").innerText = "0";
   document.getElementById("fx-reverb").value = 0;
   document.getElementById("reverb-val-text").innerText = "0%";
+}
+
+function setEq(index, value) {
+  sendAction("SET_FX", {
+    key: "eq",
+    value: parseFloat(value),
+    index: parseInt(index),
+  });
+}
+
+function resetEq() {
+  const inputs = document.querySelectorAll('#eq-modal input[type="range"]');
+  inputs.forEach((inp, i) => {
+    inp.value = 0;
+    setEq(i, 0);
+  });
 }
 
 const inp = document.getElementById("url-input");
@@ -352,169 +349,3 @@ document.addEventListener("visibilitychange", () => {
     checkAndReconnect();
   }
 });
-
-function injectRemoteUI() {
-  const style = document.createElement("style");
-  style.innerHTML = `
-      input[type=range]::-webkit-slider-thumb {
-        -webkit-appearance: none; appearance: none;
-        width: 18px; height: 18px;
-        background: #ffffff; border-radius: 50%;
-        cursor: pointer; opacity: 1 !important;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.5); margin-top: -7px;
-      }
-      input[type=range]::-webkit-slider-runnable-track {
-        width: 100%; height: 4px;
-        background: #444; border-radius: 2px;
-      }
-    `;
-  document.head.appendChild(style);
-
-  const body = document.body;
-  body.className =
-    "bg-black text-white font-sans h-[100dvh] w-full overflow-hidden flex flex-col";
-
-  const footer = document
-    .getElementById("remote-ui")
-    .querySelector(".fixed.bottom-0");
-  if (footer) {
-    footer.className =
-      "bg-zinc-900 border-t border-zinc-800 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shrink-0 z-20";
-    document.getElementById("remote-ui").appendChild(footer);
-    const main = document.getElementById("remote-ui").querySelector(".flex-1");
-    if (main) main.classList.add("overflow-y-auto", "overscroll-contain");
-    document.getElementById("remote-ui").className = "flex flex-col h-full";
-  }
-
-  const controls = document.getElementById("master-controls");
-  const btnContainer = document.createElement("div");
-  btnContainer.id = "fx-btn-container";
-
-  btnContainer.className = "hidden mt-4 col-span-4 grid grid-cols-2 gap-3";
-
-  btnContainer.innerHTML = `
-        <button id="btn-open-fx" onclick="checkFxAvailability(() => document.getElementById('fx-modal').classList.remove('hidden'))" 
-           class="bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-white py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95">
-           <i class="fas fa-sliders-h text-pink-500"></i> FX
-        </button>
-        <button id="btn-open-eq" onclick="checkFxAvailability(() => document.getElementById('eq-modal').classList.remove('hidden'))" 
-           class="bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-white py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95">
-           <i class="fas fa-chart-bar text-green-500"></i> EQ
-        </button>
-    `;
-  controls.appendChild(btnContainer);
-
-  createFxModal();
-  createEqModal();
-}
-
-function createFxModal() {
-  const modal = document.createElement("div");
-  modal.id = "fx-modal";
-  modal.className =
-    "hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center animate-fadeIn";
-  modal.innerHTML = `
-        <div class="bg-zinc-900 w-full sm:w-96 rounded-t-2xl sm:rounded-2xl p-6 border-t sm:border border-zinc-700 shadow-2xl pb-[calc(2rem+env(safe-area-inset-bottom))]">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold text-white"><i class="fas fa-sliders-h mr-2 text-pink-500"></i>Master FX</h3>
-                <button onclick="document.getElementById('fx-modal').classList.add('hidden')" class="text-zinc-500 hover:text-white p-2"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <div class="space-y-6">
-                <div>
-                    <div class="text-sm mb-3 text-zinc-400 text-center uppercase tracking-wider font-bold">Pitch Shift</div>
-                    <div class="flex items-center justify-between bg-zinc-950 p-2 rounded-xl border border-zinc-800">
-                        <button onclick="changePitch(-1)" class="w-12 h-12 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white active:scale-90 transition-transform">
-                            <i class="fas fa-caret-left text-2xl"></i>
-                        </button>
-                        
-                        <div class="text-center w-20">
-                            <span id="pitch-val-text" class="text-3xl font-mono text-pink-500 font-bold">0</span>
-                        </div>
-                        
-                        <button onclick="changePitch(1)" class="w-12 h-12 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white active:scale-90 transition-transform">
-                            <i class="fas fa-caret-right text-2xl"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="flex justify-between text-sm mb-2"><span class="text-zinc-400">Reverb</span><span id="reverb-val-text" class="font-mono text-pink-400">0%</span></div>
-                    <input type="range" id="fx-reverb" min="0" max="2" step="0.1" value="0" class="w-full" oninput="setFx('reverb', this.value)">
-                </div>
-
-                <div class="grid grid-cols-2 gap-3 pt-4">
-                    <button onclick="resetFx()" class="bg-zinc-800 text-zinc-300 py-3 rounded-xl font-medium">Reset</button>
-                    <button onclick="document.getElementById('fx-modal').classList.add('hidden')" class="bg-white text-black py-3 rounded-xl font-bold">Done</button>
-                </div>
-            </div>
-        </div>
-    `;
-  document.body.appendChild(modal);
-}
-
-function createEqModal() {
-  const bands = [
-    "60",
-    "170",
-    "310",
-    "600",
-    "1k",
-    "3k",
-    "6k",
-    "12k",
-    "14k",
-    "16k",
-  ];
-  const modal = document.createElement("div");
-  modal.id = "eq-modal";
-  modal.className =
-    "hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center animate-fadeIn";
-
-  let slidersHtml = bands
-    .map(
-      (label, i) => `
-            <div class="flex flex-col items-center gap-2 flex-1 min-w-[30px]">
-                 <div class="relative h-32 w-full flex justify-center">
-                    <input type="range" min="-12" max="12" step="1" value="0" 
-                        oninput="setEq(${i}, this.value)"
-                        class="absolute top-[50%] left-[50%] w-32 h-8 -translate-x-1/2 -translate-y-1/2 -rotate-90 origin-center bg-transparent appearance-none">
-                 </div>
-                 <span class="text-[9px] text-zinc-500 font-mono -mt-2">${label}</span>
-            </div>
-        `
-    )
-    .join("");
-
-  modal.innerHTML = `
-        <div class="bg-zinc-900 w-full sm:w-[500px] rounded-t-2xl sm:rounded-2xl p-6 border-t sm:border border-zinc-700 shadow-2xl pb-[calc(2rem+env(safe-area-inset-bottom))]">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-white"><i class="fas fa-chart-bar mr-2 text-green-500"></i>Equalizer</h3>
-                <button onclick="document.getElementById('eq-modal').classList.add('hidden')" class="text-zinc-500 hover:text-white p-2"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <div class="flex justify-between gap-0 overflow-x-auto pb-4 no-scrollbar">
-                ${slidersHtml}
-            </div>
-            <div class="grid grid-cols-2 gap-3 mt-2">
-                <button onclick="resetEq()" class="bg-zinc-800 text-zinc-300 py-3 rounded-xl font-medium">Flat</button>
-                <button onclick="document.getElementById('eq-modal').classList.add('hidden')" class="bg-white text-black py-3 rounded-xl font-bold">Done</button>
-            </div>
-        </div>
-    `;
-  document.body.appendChild(modal);
-}
-
-function setEq(index, value) {
-  sendAction("SET_FX", {
-    key: "eq",
-    value: parseFloat(value),
-    index: parseInt(index),
-  });
-}
-
-function resetEq() {
-  const inputs = document.querySelectorAll('#eq-modal input[type="range"]');
-  inputs.forEach((inp, i) => {
-    inp.value = 0;
-    setEq(i, 0);
-  });
-}

@@ -14,12 +14,31 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     <link rel="stylesheet" href="css/style.css" />
+    
     <style>
       body {
         overflow-y: auto;
+      }
+      /* Custom Layout adjustments for landscape phone */
+      @media (max-height: 500px) and (orientation: landscape) {
+        #master-controls {
+            grid-template-columns: repeat(4, 1fr) !important;
+        }
+        #master-controls > button {
+            padding: 0.5rem !important; /* Force smaller padding */
+        }
+        #master-controls .fa-solid {
+            font-size: 1rem !important;
+        }
+        #master-controls span {
+            font-size: 0.6rem !important;
+        }
+        /* Hide Seek buttons text to save space */
+        #master-controls button span {
+             display: none;
+        }
+        .pb-32 { padding-bottom: 5rem !important; }
       }
     </style>
   </head>
@@ -31,37 +50,26 @@
       class="fixed inset-0 z-[100] bg-zinc-900 flex flex-col items-center justify-center p-6 text-center transition-opacity duration-300"
     >
       <div class="relative w-20 h-20 mb-6">
-        <div
-          class="absolute inset-0 border-4 border-zinc-700 rounded-full"
-        ></div>
-        <div
-          class="absolute inset-0 border-4 border-red-500 rounded-full border-t-transparent animate-spin"
-        ></div>
-        <i
-          class="fa-solid fa-wifi absolute inset-0 flex items-center justify-center text-zinc-500 text-xl animate-pulse"
-        ></i>
+        <div class="absolute inset-0 border-4 border-zinc-700 rounded-full"></div>
+        <div class="absolute inset-0 border-4 border-red-500 rounded-full border-t-transparent animate-spin"></div>
+        <i class="fa-solid fa-wifi absolute inset-0 flex items-center justify-center text-zinc-500 text-xl animate-pulse"></i>
       </div>
       <h2 class="text-xl font-bold text-white mb-2">กำลังเชื่อมต่อ...</h2>
-      <p id="conn-status-text" class="text-zinc-400 text-sm">
-        กำลังค้นหาห้องปาร์ตี้
-      </p>
+      <p id="conn-status-text" class="text-zinc-400 text-sm">กำลังค้นหาห้องปาร์ตี้</p>
     </div>
 
     <div
       id="toast"
       class="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-zinc-800 border border-zinc-700 text-white px-4 py-2 rounded-full shadow-xl transition-opacity duration-300 opacity-0 pointer-events-none text-sm font-bold flex items-center gap-2 whitespace-nowrap pt-safe"
     >
-      <i class="fa-solid fa-check text-green-500"></i
-      ><span id="toast-msg">Success</span>
+      <i class="fa-solid fa-check text-green-500"></i><span id="toast-msg">Success</span>
     </div>
 
     <div
       id="login-screen"
       class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6 hidden"
     >
-      <div
-        class="w-full max-w-sm glass-panel p-8 rounded-3xl text-center space-y-6"
-      >
+      <div class="w-full max-w-sm c-glass p-8 rounded-3xl text-center space-y-6">
         <h1 class="text-2xl font-bold text-white">เข้าร่วมปาร์ตี้</h1>
         <input
           id="username-input"
@@ -71,7 +79,7 @@
         />
         <button
           onclick="handleJoin()"
-          class="w-full bg-red-600 hover:bg-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-600/20 active:scale-95 transition-all"
+          class="w-full c-btn c-btn-primary p-4 rounded-xl shadow-lg shadow-red-600/20 active:scale-95"
         >
           เข้าห้อง
         </button>
@@ -80,7 +88,7 @@
 
     <div id="remote-ui" class="flex-1 flex flex-col hidden">
       <div
-        class="shrink-0 p-4 pt-safe flex justify-between items-center glass-panel border-b-0 border-white/5 bg-zinc-900/50"
+        class="shrink-0 p-4 pt-safe flex justify-between items-center c-glass border-b-0 border-white/5 bg-zinc-900/50"
       >
         <div class="flex items-center gap-3">
           <div
@@ -90,18 +98,8 @@
             ?
           </div>
           <div>
-            <div
-              id="user-name"
-              class="font-bold text-sm leading-tight text-white"
-            >
-              -
-            </div>
-            <div
-              id="user-role"
-              class="text-[10px] text-gray-500 font-mono uppercase"
-            >
-              ผู้ร่วมงาน
-            </div>
+            <div id="user-name" class="font-bold text-sm leading-tight text-white">-</div>
+            <div id="user-role" class="text-[10px] text-gray-500 font-mono uppercase">ผู้ร่วมงาน</div>
           </div>
         </div>
         <div
@@ -113,12 +111,9 @@
       </div>
 
       <div class="flex-1 flex flex-col p-4 gap-4 overflow-y-auto pb-32">
-        <div class="glass-panel p-4 rounded-2xl space-y-3">
-          <div
-            class="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider"
-          >
-            <i class="fa-brands fa-youtube text-red-600 text-lg"></i> ขอเพลง
-            (YouTube)
+        <div class="c-glass p-4 rounded-2xl space-y-3">
+          <div class="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <i class="fa-brands fa-youtube text-red-600 text-lg"></i> ขอเพลง (YouTube)
           </div>
           <div class="flex gap-2">
             <button
@@ -146,54 +141,39 @@
             id="preview-box"
             class="flex gap-3 bg-zinc-900/50 p-2 rounded-lg border border-white/5 hidden fade-in"
           >
-            <img
-              id="prev-img"
-              src=""
-              class="w-16 h-12 object-cover rounded bg-zinc-800"
-            />
+            <img id="prev-img" src="" class="w-16 h-12 object-cover rounded bg-zinc-800" />
             <div class="flex-1 min-w-0 flex flex-col justify-center">
-              <p
-                id="prev-title"
-                class="text-xs font-bold truncate text-white"
-              ></p>
+              <p id="prev-title" class="text-xs font-bold truncate text-white"></p>
               <p class="text-[10px] text-gray-500">พร้อมเพิ่มเข้าคิว</p>
             </div>
           </div>
         </div>
 
         <div id="master-controls" class="hidden grid grid-cols-4 gap-3 fade-in">
-          <button
-            onclick="sendAction('SEEK', {amount: -5})"
-            class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700"
-          >
-            <i class="fa-solid fa-rotate-left text-gray-400"></i
-            ><span class="text-[10px] font-bold text-gray-500">-5s</span>
+          <button onclick="sendAction('SEEK', {amount: -5})" class="c-btn c-btn-secondary p-4 rounded-2xl flex-col gap-1 h-auto">
+            <i class="fa-solid fa-rotate-left text-gray-400"></i><span class="text-[10px] font-bold text-gray-500">-5s</span>
           </button>
-          <button
-            onclick="sendAction('PLAY')"
-            class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700"
-          >
+          <button onclick="sendAction('PLAY')" class="c-btn c-btn-secondary p-4 rounded-2xl flex-col gap-1 h-auto">
             <i class="fa-solid fa-play text-green-500 text-lg"></i>
           </button>
-          <button
-            onclick="sendAction('PAUSE')"
-            class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700"
-          >
+          <button onclick="sendAction('PAUSE')" class="c-btn c-btn-secondary p-4 rounded-2xl flex-col gap-1 h-auto">
             <i class="fa-solid fa-pause text-yellow-500 text-lg"></i>
           </button>
-          <button
-            onclick="sendAction('SEEK', {amount: 5})"
-            class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 transition active:scale-95 border border-zinc-700"
-          >
-            <i class="fa-solid fa-rotate-right text-gray-400"></i
-            ><span class="text-[10px] font-bold text-gray-500">+5s</span>
+          <button onclick="sendAction('SEEK', {amount: 5})" class="c-btn c-btn-secondary p-4 rounded-2xl flex-col gap-1 h-auto">
+            <i class="fa-solid fa-rotate-right text-gray-400"></i><span class="text-[10px] font-bold text-gray-500">+5s</span>
           </button>
-          <button
-            onclick="sendAction('NEXT')"
-            class="col-span-4 bg-gradient-to-r from-zinc-800 to-zinc-700 border border-zinc-600 p-4 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg active:scale-95 transition"
-          >
+          <button onclick="sendAction('NEXT')" class="col-span-4 bg-gradient-to-r from-zinc-800 to-zinc-700 border border-zinc-600 p-4 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg active:scale-95 transition">
             <i class="fa-solid fa-forward-step text-white"></i> เล่นเพลงถัดไป
           </button>
+
+          <div id="fx-btn-container" class="col-span-4 grid grid-cols-2 gap-3 mt-1">
+             <button id="btn-open-fx" onclick="checkFxAvailability(() => openModal('fx-modal'))" class="c-btn c-btn-secondary font-bold">
+                <i class="fas fa-sliders-h text-pink-500"></i> FX
+             </button>
+             <button id="btn-open-eq" onclick="checkFxAvailability(() => openModal('eq-modal'))" class="c-btn c-btn-secondary font-bold">
+                <i class="fas fa-chart-bar text-green-500"></i> EQ
+             </button>
+          </div>
         </div>
 
         <div
@@ -204,18 +184,10 @@
         </div>
       </div>
 
-      <div
-        class="fixed bottom-0 left-0 w-full bg-zinc-900 border-t border-zinc-800 p-4 pb-safe z-20"
-      >
+      <div class="fixed bottom-0 left-0 w-full bg-zinc-900 border-t border-zinc-800 p-4 pb-safe z-20">
         <div class="flex justify-between gap-4 w-full">
-          <button
-            onclick="document.getElementById('queue-modal').classList.remove('hidden')"
-            class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition"
-          >
-            <i class="fa-solid fa-list text-gray-400"></i> คิวเพลง (<span
-              id="q-count-btn"
-              >0</span
-            >)
+          <button onclick="openModal('queue-modal')" class="c-btn c-btn-secondary flex-1 rounded-xl text-sm">
+            <i class="fa-solid fa-list text-gray-400"></i> คิวเพลง (<span id="q-count-btn">0</span>)
           </button>
           <button
             id="stop-btn"
@@ -227,31 +199,97 @@
         </div>
       </div>
     </div>
+<div id="alert-modal" class="c-modal-backdrop hidden">
+    <div class="c-modal-content" style="max-width: 400px;">
+        <div class="c-modal-header border-b-0 pb-0">
+            <h3 id="alert-title" class="text-xl font-bold text-white">Alert</h3>
+        </div>
+        <div class="c-modal-body text-center pt-2 pb-2">
+            <div id="alert-icon" class="text-5xl mb-4 text-yellow-500"></div>
+            <p id="alert-msg" class="text-gray-300 text-sm leading-relaxed"></p>
+        </div>
+        <div class="c-modal-footer pb-4 pt-2 border-t-0 bg-transparent">
+             <button onclick="closeModal('alert-modal')" class="w-full c-btn c-btn-primary rounded-xl">OK</button>
+        </div>
+    </div>
+</div>
 
-    <div
-      id="queue-modal"
-      class="fixed inset-0 z-[60] bg-black/90 hidden flex items-center justify-center p-4 fade-in"
-    >
-      <div
-        class="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl flex flex-col max-h-[70vh] shadow-2xl"
-      >
-        <div
-          class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 rounded-t-2xl"
-        >
+    <div id="queue-modal" class="c-modal-backdrop hidden">
+      <div class="c-modal-content">
+        <div class="c-modal-header">
           <h3 class="font-bold text-white">รายการคิวเพลง</h3>
-          <button
-            onclick="document.getElementById('queue-modal').classList.add('hidden')"
-            class="text-gray-400 hover:text-white"
-          >
+          <button onclick="closeModal('queue-modal')" class="c-btn c-btn-ghost p-2 rounded-full">
             <i class="fa-solid fa-times"></i>
           </button>
         </div>
-        <div
-          id="queue-list-modal"
-          class="overflow-y-auto p-4 space-y-2 bg-black/20"
-        ></div>
+        <div id="queue-list-modal" class="c-modal-body space-y-2"></div>
       </div>
     </div>
+
+    <div id="fx-modal" class="c-modal-backdrop hidden">
+    <div class="c-modal-content">
+        <div class="c-modal-header">
+            <h3 class="text-xl font-bold text-white"><i class="fas fa-sliders-h mr-2 text-pink-500"></i>Master FX</h3>
+            <button onclick="closeModal('fx-modal')" class="c-btn c-btn-ghost p-2 rounded-full"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="c-modal-body space-y-6">
+            <div>
+                <div class="text-sm mb-3 text-zinc-400 text-center uppercase tracking-wider font-bold">Pitch Shift</div>
+                <div class="flex items-center justify-between bg-zinc-950 p-2 rounded-xl border border-zinc-800">
+                    <button onclick="changePitch(-1)" class="w-12 h-12 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white active:scale-90 transition-transform">
+                        <i class="fas fa-caret-left text-2xl"></i>
+                    </button>
+                    <div class="text-center w-20">
+                        <span id="pitch-val-text" class="text-3xl font-mono text-pink-500 font-bold">0</span>
+                    </div>
+                    <button onclick="changePitch(1)" class="w-12 h-12 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white active:scale-90 transition-transform">
+                        <i class="fas fa-caret-right text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between text-sm mb-2"><span class="text-zinc-400">Reverb</span><span id="reverb-val-text" class="font-mono text-pink-400">0%</span></div>
+                <div class="c-range-wrapper">
+                    <input type="range" id="fx-reverb" min="0" max="2" step="0.1" value="0" oninput="setFx('reverb', this.value)">
+                </div>
+            </div>
+        </div>
+        <div class="c-modal-footer grid grid-cols-2 gap-3">
+            <button onclick="resetFx()" class="c-btn c-btn-secondary">Reset</button>
+            <button onclick="closeModal('fx-modal')" class="c-btn c-btn-primary bg-white text-black hover:bg-gray-200">Done</button>
+        </div>
+    </div>
+</div>
+
+  <div id="eq-modal" class="c-modal-backdrop hidden">
+    <div class="c-modal-content" style="max-width: 500px;">
+        <div class="c-modal-header">
+            <h3 class="text-xl font-bold text-white"><i class="fas fa-chart-bar mr-2 text-green-500"></i>Equalizer</h3>
+            <button onclick="closeModal('eq-modal')" class="c-btn c-btn-ghost p-2 rounded-full"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="c-modal-body">
+            <div class="flex justify-between gap-0 overflow-x-auto pb-4 no-scrollbar">
+                <script>
+                    const bands = ["60", "170", "310", "600", "1k", "3k", "6k", "12k", "14k", "16k"];
+                    document.write(bands.map((label, i) => `
+                        <div class="flex flex-col items-center gap-2 flex-1 min-w-[30px]">
+                            <div class="eq-slider-wrapper">
+                                <input type="range" min="-12" max="12" step="1" value="0" 
+                                    oninput="setEq(${i}, this.value)"
+                                    class="eq-slider-input">
+                            </div>
+                            <span class="text-[9px] text-zinc-500 font-mono -mt-2">${label}</span>
+                        </div>
+                    `).join(''));
+                </script>
+            </div>
+        </div>
+        <div class="c-modal-footer grid grid-cols-2 gap-3">
+            <button onclick="resetEq()" class="c-btn c-btn-secondary">Flat</button>
+            <button onclick="closeModal('eq-modal')" class="c-btn c-btn-primary bg-white text-black hover:bg-gray-200">Done</button>
+        </div>
+    </div>
+</div>
 
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
