@@ -875,8 +875,21 @@ function updateSettingsUI() {
 }
 
 function toggleFullscreen() {
-  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-  else if (document.exitFullscreen) document.exitFullscreen();
+  // ดึง method ที่รองรับ (รวมถึง webkit สำหรับ Safari/iPad)
+  const doc = document;
+  const docEl = doc.documentElement;
+
+  const requestMethod =
+    docEl.requestFullscreen || docEl.webkitRequestFullscreen;
+  const exitMethod = doc.exitFullscreen || doc.webkitExitFullscreen;
+  const isFullscreen = doc.fullscreenElement || doc.webkitFullscreenElement;
+
+  // เรียกใช้ method ที่มีอยู่
+  if (!isFullscreen && requestMethod) {
+    requestMethod.call(docEl);
+  } else if (isFullscreen && exitMethod) {
+    exitMethod.call(doc);
+  }
 }
 
 function resetIdle() {
