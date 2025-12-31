@@ -1,3 +1,4 @@
+// next-juke/js/host.js
 let wakeLock = null;
 let player, peer, peerId;
 let connections = [];
@@ -7,7 +8,8 @@ let state = {
   queue: [],
   currentSong: null,
   users: [],
-  masterId: localStorage.getItem("nj_master_id") || null,
+  // *** แก้ไข: เริ่มต้นเป็น null เสมอ เพื่อให้ใครมาก่อนได้เป็น DJ ***
+  masterId: null,
   settings: {
     reqInt: localStorage.getItem("nj_reqInt") !== "false",
     fit: localStorage.getItem("nj_fit") === "true",
@@ -218,6 +220,11 @@ function checkAudioContext() {
     player.unMute();
     return;
   }
+  // ถ้ากดไปแล้ว ไม่ต้องเช็คอะไรอีก
+  if (hasInteracted) {
+    hideInteraction();
+    return;
+  }
   const isMuted = player.isMuted();
   if (isIOS) {
     if (isMuted) showInteraction();
@@ -249,6 +256,8 @@ function handleUserInteraction(event) {
     event.preventDefault();
   }
 
+  if (hasInteracted) return;
+
   hasInteracted = true;
   if (player) {
     player.mute();
@@ -266,15 +275,31 @@ function handleCommand(cmd, conn) {
   switch (cmd.type) {
     case "JOIN":
       const u = cmd.user;
-      if (state.masterId === u.id || !state.masterId) {
-        u.isMaster = true;
-        state.masterId = u.id;
-        localStorage.setItem("nj_master_id", u.id);
+      // *** Logic การตั้ง DJ ใหม่แบบ First-Come-First-Serve ***
+      if (state.masterId === null) {
+        state.masterId = u.id; // คนแรกที่มาถึง เป็น DJ ทันที
+        showToast(`${u.name} is now the DJ! 👑`, "success");
+      } else if (state.masterId === u.id) {
+        // Master คนเดิมกลับมา
+        showToast(`DJ ${u.name} reconnected`, "info");
+      } else {
+        // คนอื่น
+        showToast(`${u.name} joined`, "info");
       }
-      if (!state.users.find((x) => x.id === u.id)) {
+
+      // อัปเดตรายชื่อ (ทับข้อมูลเก่าถ้า ID เดิม)
+      const existingIdx = state.users.findIndex((x) => x.id === u.id);
+      if (existingIdx >= 0) {
+        state.users[existingIdx] = u;
+      } else {
         state.users.push(u);
-        showToast(`${u.name} joined!`, "info");
       }
+
+      // set flag ให้ user object
+      state.users.forEach((user) => {
+        user.isMaster = user.id === state.masterId;
+      });
+
       renderDashboard();
       broadcastState();
       break;
@@ -390,8 +415,12 @@ function playSong(song) {
   if (isIOS) {
     setTimeout(() => {
       const pState = player.getPlayerState();
-
-      if (pState === -1 || pState === 5 || pState === 2) {
+      // เพิ่มเงื่อนไข !hasInteracted และ !isPlaying
+      if (
+        !hasInteracted &&
+        !isPlaying &&
+        (pState === -1 || pState === 5 || pState === 2)
+      ) {
         showInteraction("แตะเพื่อเริ่มปาร์ตี้");
       }
     }, 1500);
@@ -477,7 +506,7 @@ function renderDashboard() {
 
 function promoteUser(id) {
   state.masterId = id;
-  localStorage.setItem("nj_master_id", id);
+  // ลบการเซฟลง localStorage ออก
   state.users.forEach((u) => (u.isMaster = u.id === id));
   renderDashboard();
   broadcastState();
@@ -568,8 +597,9 @@ function updateSettingsUI() {
 
   const wrap = document.getElementById("video-wrapper");
   if (state.settings.fit) {
+    // ใช้หน่วย dvw/dvh และ fixed เพื่อแก้ปัญหา Safe Area และให้เต็มจอจริง
     wrap.className =
-      "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[56.25vw] min-h-[100vh] min-w-[177.78vh] pointer-events-none transition-all duration-500";
+      "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100dvw] h-[56.25dvw] min-h-[100dvh] min-w-[177.78dvh] pointer-events-none transition-all duration-500 z-0 bg-black";
   } else {
     wrap.className =
       "relative w-full h-full flex items-center justify-center transition-all duration-500";

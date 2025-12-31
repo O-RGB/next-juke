@@ -26,6 +26,25 @@
     class="flex flex-col h-screen overflow-hidden font-sans bg-black selection:bg-red-500 selection:text-white"
   >
     <div
+      id="connection-overlay"
+      class="fixed inset-0 z-[100] bg-zinc-900 flex flex-col items-center justify-center p-6 text-center transition-opacity duration-300"
+    >
+      <div class="relative w-20 h-20 mb-6">
+        <div class="absolute inset-0 border-4 border-zinc-700 rounded-full"></div>
+        <div
+          class="absolute inset-0 border-4 border-red-500 rounded-full border-t-transparent animate-spin"
+        ></div>
+        <i
+          class="fa-solid fa-wifi absolute inset-0 flex items-center justify-center text-zinc-500 text-xl animate-pulse"
+        ></i>
+      </div>
+      <h2 class="text-xl font-bold text-white mb-2">กำลังเชื่อมต่อ...</h2>
+      <p id="conn-status-text" class="text-zinc-400 text-sm">
+        กำลังค้นหาห้องปาร์ตี้
+      </p>
+    </div>
+
+    <div
       id="toast"
       class="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-zinc-800 border border-zinc-700 text-white px-4 py-2 rounded-full shadow-xl transition-opacity duration-300 opacity-0 pointer-events-none text-sm font-bold flex items-center gap-2 whitespace-nowrap pt-safe"
     >
@@ -35,7 +54,7 @@
 
     <div
       id="login-screen"
-      class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6"
+      class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6 hidden"
     >
       <div
         class="w-full max-w-sm glass-panel p-8 rounded-3xl text-center space-y-6"

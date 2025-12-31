@@ -1,30 +1,58 @@
+// next-juke/js/remote.js
 const urlParams = new URLSearchParams(window.location.search);
 const hostId = urlParams.get("host");
 
 let peer, conn, user;
 let masterId = null;
 
+// โหลด profile เดิมที่เคยสร้างไว้ (ถ้ามี) เพื่อใช้ ID เดิมตลอด
+const savedProfile = localStorage.getItem("nj_client_identity");
+let clientProfile = savedProfile ? JSON.parse(savedProfile) : null;
+
 window.onload = () => {
   if (!hostId) {
-    document.getElementById("error-msg").innerText =
-      "ไม่พบ Host ID (กรุณาสแกน QR Code ใหม่)";
+    updateLoadingStatus("ไม่พบ Host ID (กรุณาสแกน QR Code ใหม่)", true);
     return;
   }
-  const saved = localStorage.getItem(`nj_user_${hostId}`);
-  if (saved) {
-    const u = JSON.parse(saved);
-    document.getElementById("username-input").value = u.name;
-    user = u;
+
+  // ถ้าเคยมีชื่อแล้ว ให้ Login อัตโนมัติด้วย ID เดิม
+  if (clientProfile && clientProfile.name) {
+    document.getElementById("username-input").value = clientProfile.name;
+    user = clientProfile;
+    // ข้ามหน้า Login ไปเริ่ม connect เลย
     initPeer();
+  } else {
+    // ถ้ายังไม่มีชื่อ ให้ซ่อน Loading ชั่วคราวเพื่อให้กรอกชื่อ
+    document.getElementById("connection-overlay").classList.add("hidden");
+    document.getElementById("login-screen").classList.remove("hidden");
   }
 };
 
 function handleJoin() {
   const name = document.getElementById("username-input").value.trim();
   if (!name) return;
-  user = { id: crypto.randomUUID(), name: name, isMaster: false };
-  localStorage.setItem(`nj_user_${hostId}`, JSON.stringify(user));
+
+  // สร้าง ID ใหม่แค่ครั้งแรก หรือใช้ ID เดิมถ้ามี
+  const uid = clientProfile ? clientProfile.id : crypto.randomUUID();
+
+  user = { id: uid, name: name, isMaster: false };
+
+  // จำ ID นี้ไว้ใช้ตลอดชีพ (ไม่ผูกกับ Host ID แล้ว)
+  localStorage.setItem("nj_client_identity", JSON.stringify(user));
+
+  // เปิด Loading กลับมา
+  document.getElementById("connection-overlay").classList.remove("hidden");
+  document.getElementById("login-screen").classList.add("hidden");
+  updateLoadingStatus("กำลังเริ่มการเชื่อมต่อ...");
+
   initPeer();
+}
+
+function updateLoadingStatus(text, isError = false) {
+  const el = document.getElementById("conn-status-text");
+  el.innerText = text;
+  if (isError) el.classList.add("text-red-500");
+  else el.classList.remove("text-red-500");
 }
 
 function initPeer() {
@@ -33,46 +61,73 @@ function initPeer() {
     peer = null;
   }
 
-  document.getElementById("login-screen").classList.add("hidden");
-  document.getElementById("remote-ui").classList.remove("hidden");
-
+  // UI Setup
   document.getElementById("user-name").innerText = user.name;
   document.getElementById("user-avatar").innerText = user.name[0].toUpperCase();
 
   peer = new Peer(PEER_CONFIG);
+
   peer.on("open", () => {
+    updateLoadingStatus("พบเซิร์ฟเวอร์... กำลังเข้าห้อง");
     setStatus(
       "เชื่อมต่อ...",
       "text-yellow-500",
       "bg-yellow-500/10",
       "border-yellow-500"
     );
+
     conn = peer.connect(hostId);
 
     conn.on("open", () => {
+      updateLoadingStatus("เชื่อมต่อสำเร็จ! กำลังดึงข้อมูล...");
       setStatus(
         "ออนไลน์",
         "text-green-500",
         "bg-green-500/10",
         "border-green-500"
       );
+
+      // ส่งข้อมูล User (พร้อม ID เดิม) ไปให้ Host ตัดสินใจ
       conn.send({ type: "JOIN", user: user });
       conn.send({ type: "GET_STATE" });
     });
 
     conn.on("data", (data) => {
-      if (data.type === "UPDATE_STATE") updateState(data);
+      if (data.type === "UPDATE_STATE") {
+        // *** สำคัญ: ซ่อน Loading เมื่อได้รับข้อมูลครั้งแรกเท่านั้น ***
+        document.getElementById("connection-overlay").classList.add("hidden");
+        document.getElementById("remote-ui").classList.remove("hidden");
+        updateState(data);
+      }
     });
 
-    conn.on("close", () =>
+    conn.on("close", () => {
+      // ถ้าหลุด ให้เด้ง Loading ขึ้นมาบังทันที
+      document.getElementById("connection-overlay").classList.remove("hidden");
+      updateLoadingStatus("หลุดการเชื่อมต่อ... กำลังต่อใหม่", true);
       setStatus(
         "หลุดการเชื่อมต่อ",
         "text-red-500",
         "bg-red-500/10",
         "border-red-500"
-      )
-    );
+      );
+
+      // พยายามต่อใหม่
+      setTimeout(checkAndReconnect, 2000);
+    });
   });
+
+  peer.on("error", (err) => {
+    updateLoadingStatus("เกิดข้อผิดพลาด: " + err.type, true);
+    setTimeout(checkAndReconnect, 3000);
+  });
+}
+
+function checkAndReconnect() {
+  if (!peer || peer.disconnected || peer.destroyed || (conn && !conn.open)) {
+    console.log("Detecting disconnection... Reconnecting...");
+    initPeer();
+  }
 }
 
 function setStatus(text, textColor, bgColor, borderColor) {
@@ -197,17 +252,3 @@ document.addEventListener("visibilitychange", () => {
     checkAndReconnect();
   }
 });
-
-function checkAndReconnect() {
-  if (!peer || peer.disconnected || peer.destroyed || (conn && !conn.open)) {
-    console.log("Detecting disconnection... Reconnecting...");
-    setStatus(
-      "กำลังเชื่อมต่อใหม่...",
-      "text-yellow-500",
-      "bg-yellow-500/10",
-      "border-yellow-500"
-    );
-
-    initPeer();
-  }
-}
