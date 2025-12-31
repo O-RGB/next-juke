@@ -1,4 +1,5 @@
 // next-juke/js/host.js
+
 let wakeLock = null;
 let player, peer, peerId;
 let connections = [];
@@ -8,12 +9,20 @@ let state = {
   queue: [],
   currentSong: null,
   users: [],
-  // *** แก้ไข: เริ่มต้นเป็น null เสมอ เพื่อให้ใครมาก่อนได้เป็น DJ ***
   masterId: null,
   settings: {
     reqInt: localStorage.getItem("nj_reqInt") !== "false",
     fit: localStorage.getItem("nj_fit") === "true",
     quality: localStorage.getItem("nj_quality") || "auto",
+    extId: localStorage.getItem("nj_extId") || "",
+  },
+  audioFx: {
+    isInstalled: false,
+    isActive: false,
+    pitch: 0,
+    reverb: 0,
+    pan: 0,
+    eq: true, // สมมติว่า EQ ON ถ้า Ext ทำงาน
   },
 };
 
@@ -69,6 +78,134 @@ document.addEventListener("visibilitychange", async () => {
   }
 });
 
+// --- Extension Logic ---
+
+function saveExtensionId(val) {
+  const cleanVal = val.trim();
+  state.settings.extId = cleanVal;
+  localStorage.setItem("nj_extId", cleanVal);
+  checkExtension(true); // true = force reset
+}
+
+function checkExtension(shouldReset = false) {
+  const inputEl = document.getElementById("input-ext-id");
+
+  if (!state.settings.extId) {
+    if (inputEl && !inputEl.value) inputEl.value = "";
+    updateExtStatus(false, "No ID");
+    state.audioFx.isInstalled = false;
+    renderAmpStatus();
+    broadcastState();
+    return;
+  }
+
+  if (inputEl && inputEl.value === "") inputEl.value = state.settings.extId;
+
+  if (!window.chrome || !chrome.runtime) {
+    updateExtStatus(false, "Runtime Not Found");
+    renderAmpStatus();
+    return;
+  }
+
+  try {
+    chrome.runtime.sendMessage(
+      state.settings.extId,
+      { type: "GET_STATE" },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          state.audioFx.isInstalled = false;
+          updateExtStatus(false, "Error / Not Found");
+        } else {
+          state.audioFx.isInstalled = true;
+          if (response) {
+            state.audioFx.isActive = response.isAudioActive;
+            state.audioFx.pitch = response.pitch || 0;
+            state.audioFx.reverb = response.reverb || 0;
+            // state.audioFx.eq = response.eqActive || true; // Future proofing
+          }
+          updateExtStatus(true, "Connected");
+
+          if (shouldReset) {
+            chrome.runtime.sendMessage(state.settings.extId, {
+              type: "SET_PARAM",
+              key: "reset",
+              value: true,
+            });
+            state.audioFx.pitch = 0;
+            state.audioFx.reverb = 0;
+            state.audioFx.pan = 0;
+          }
+        }
+        renderAmpStatus();
+        broadcastState();
+      }
+    );
+  } catch (e) {
+    console.error(e);
+    updateExtStatus(false, "Error");
+    renderAmpStatus();
+  }
+}
+
+function updateExtStatus(isOk, text) {
+  const dot = document.getElementById("ext-status-dot");
+  const txt = document.getElementById("ext-status-text");
+  if (dot && txt) {
+    if (isOk) {
+      dot.className =
+        "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]";
+      txt.className = "text-green-400 font-mono text-xs font-bold";
+      txt.innerText = "Connected";
+    } else {
+      dot.className =
+        "w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
+      txt.className = "text-zinc-400 font-mono text-xs";
+      txt.innerText = text;
+    }
+  }
+}
+
+// ฟังก์ชันแสดง Amp Status แบบ UI สวยงามและ Responsive
+function renderAmpStatus() {
+  const el = document.getElementById("header-amp-status");
+  if (!el) return;
+
+  if (state.audioFx.isInstalled) {
+    const p =
+      state.audioFx.pitch > 0 ? `+${state.audioFx.pitch}` : state.audioFx.pitch;
+    const r = Math.round(state.audioFx.reverb * 100); // 0.5 -> 50
+
+    // HTML Structure แบบ Icon + Text (ซ่อน Text เมื่อจอเล็ก)
+    el.innerHTML = `
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5">
+                <i class="fa-solid fa-music text-[10px] opacity-70"></i>
+                <span class="hidden sm:inline opacity-70 text-[10px] uppercase tracking-wider">Pitch</span>
+                <span class="font-bold">${p}</span>
+            </div>
+            <div class="w-px h-3 bg-green-500/30"></div>
+            <div class="flex items-center gap-1.5">
+                <i class="fa-solid fa-city text-[10px] opacity-70"></i>
+                <span class="hidden sm:inline opacity-70 text-[10px] uppercase tracking-wider">Rev</span>
+                <span class="font-bold">${r}</span>
+            </div>
+        </div>
+    `;
+
+    el.classList.remove("hidden");
+    el.classList.add("flex");
+  } else {
+    el.classList.add("hidden");
+    el.classList.remove("flex");
+  }
+}
+
+window.showAmpSetupModal = function () {
+  // ไม่ได้ใช้แต่คงไว้เพื่อความเข้ากันได้
+};
+
+// -----------------------
+
 function startApp() {
   isAppStarted = true;
   const landing = document.getElementById("landing-view");
@@ -80,6 +217,8 @@ function startApp() {
     playerView.classList.remove("hidden");
     setTimeout(() => playerView.classList.remove("opacity-0"), 100);
     openModal("welcome-modal");
+
+    checkExtension(true);
   }, 700);
 
   initPlayer();
@@ -195,6 +334,22 @@ function onPlayerStateChange(event) {
       lastPlayedSongId = state.currentSong.id;
       showNowPlaying();
     }
+
+    if (
+      state.audioFx.isInstalled &&
+      !state.audioFx.isActive &&
+      state.settings.extId
+    ) {
+      try {
+        chrome.runtime.sendMessage(state.settings.extId, {
+          type: "START_CAPTURE",
+          streamId: null,
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     checkAudioContext();
   } else if (event.data === 2) {
     isPlaying = false;
@@ -220,7 +375,6 @@ function checkAudioContext() {
     player.unMute();
     return;
   }
-  // ถ้ากดไปแล้ว ไม่ต้องเช็คอะไรอีก
   if (hasInteracted) {
     hideInteraction();
     return;
@@ -275,19 +429,15 @@ function handleCommand(cmd, conn) {
   switch (cmd.type) {
     case "JOIN":
       const u = cmd.user;
-      // *** Logic การตั้ง DJ ใหม่แบบ First-Come-First-Serve ***
       if (state.masterId === null) {
-        state.masterId = u.id; // คนแรกที่มาถึง เป็น DJ ทันที
+        state.masterId = u.id;
         showToast(`${u.name} is now the DJ! 👑`, "success");
       } else if (state.masterId === u.id) {
-        // Master คนเดิมกลับมา
         showToast(`DJ ${u.name} reconnected`, "info");
       } else {
-        // คนอื่น
         showToast(`${u.name} joined`, "info");
       }
 
-      // อัปเดตรายชื่อ (ทับข้อมูลเก่าถ้า ID เดิม)
       const existingIdx = state.users.findIndex((x) => x.id === u.id);
       if (existingIdx >= 0) {
         state.users[existingIdx] = u;
@@ -295,7 +445,6 @@ function handleCommand(cmd, conn) {
         state.users.push(u);
       }
 
-      // set flag ให้ user object
       state.users.forEach((user) => {
         user.isMaster = user.id === state.masterId;
       });
@@ -342,6 +491,44 @@ function handleCommand(cmd, conn) {
         const ct = player.getCurrentTime();
         const newTime = ct + (cmd.amount || 0);
         player.seekTo(newTime, true);
+      }
+      break;
+    case "SET_FX":
+      if (isMaster(cmd.user.id)) {
+        if (state.audioFx.isInstalled && state.settings.extId) {
+          chrome.runtime.sendMessage(state.settings.extId, {
+            type: "SET_PARAM",
+            key: cmd.key,
+            value: cmd.value,
+            index: cmd.index,
+          });
+
+          if (cmd.key === "pitch") state.audioFx.pitch = cmd.value;
+          if (cmd.key === "reverb") state.audioFx.reverb = cmd.value;
+          if (cmd.key === "reset") {
+            state.audioFx.pitch = 0;
+            state.audioFx.reverb = 0;
+          }
+
+          // แสดง Toast บน Host เมื่อมีการปรับ Effect
+          let msg = "";
+          if (cmd.key === "pitch")
+            msg = `Pitch: ${cmd.value > 0 ? "+" : ""}${cmd.value}`;
+          else if (cmd.key === "reverb")
+            msg = `Reverb: ${Math.round(cmd.value * 100)}%`;
+          else if (cmd.key === "eq") msg = `EQ Band ${cmd.index}: ${cmd.value}`;
+          else if (cmd.key === "reset") msg = "Audio FX Reset";
+
+          if (msg) showToast(msg, "info");
+
+          renderAmpStatus(); // อัปเดต UI เมื่อค่าเปลี่ยน
+          broadcastState();
+        } else {
+          // แจ้ง Remote ว่า Host ไม่มี Amp
+          showToast("Amp Extension Error", "info");
+          state.audioFx.isInstalled = false; // ปรับ State
+          broadcastState(); // ให้ Remote รู้ว่า Amp หลุด
+        }
       }
       break;
     case "GET_STATE":
@@ -415,7 +602,6 @@ function playSong(song) {
   if (isIOS) {
     setTimeout(() => {
       const pState = player.getPlayerState();
-      // เพิ่มเงื่อนไข !hasInteracted และ !isPlaying
       if (
         !hasInteracted &&
         !isPlaying &&
@@ -440,6 +626,7 @@ function broadcastState() {
     users: state.users,
     masterId: state.masterId,
     currentId: state.currentSong ? state.currentSong.id : null,
+    audioFx: state.audioFx,
   };
   connections.forEach((c) => {
     if (c.open) c.send(payload);
@@ -471,12 +658,14 @@ function renderDashboard() {
     qList.innerHTML = state.queue
       .map(
         (s, i) => `
-            <div class="flex justify-between items-center p-2 bg-zinc-800/30 rounded border border-white/5 text-xs">
-                <span class="truncate flex-1 text-gray-300">${i + 1}. ${
+                <div class="flex justify-between items-center p-2 bg-zinc-800/30 rounded border border-white/5 text-xs">
+                    <span class="truncate flex-1 text-gray-300">${i + 1}. ${
           s.title
         }</span>
-                <span class="text-[10px] text-gray-500 ml-2">${s.sender}</span>
-            </div>`
+                    <span class="text-[10px] text-gray-500 ml-2">${
+                      s.sender
+                    }</span>
+                </div>`
       )
       .join("");
   }
@@ -486,27 +675,26 @@ function renderDashboard() {
   uList.innerHTML = state.users
     .map(
       (u) => `
-        <div class="flex justify-between items-center p-2 bg-zinc-800/30 rounded border border-white/5 text-xs">
-            <span class="${
-              u.id === state.masterId
-                ? "text-red-500 font-bold"
-                : "text-gray-300"
-            }">
-                ${u.name} ${u.id === state.masterId ? "👑" : ""}
-            </span>
-            ${
-              u.id !== state.masterId
-                ? `<button onclick="promoteUser('${u.id}')" class="text-[10px] bg-zinc-700 px-2 py-0.5 rounded hover:bg-zinc-600 text-white">Make DJ</button>`
-                : ""
-            }
-        </div>`
+            <div class="flex justify-between items-center p-2 bg-zinc-800/30 rounded border border-white/5 text-xs">
+                <span class="${
+                  u.id === state.masterId
+                    ? "text-red-500 font-bold"
+                    : "text-gray-300"
+                }">
+                    ${u.name} ${u.id === state.masterId ? "👑" : ""}
+                </span>
+                ${
+                  u.id !== state.masterId
+                    ? `<button onclick="promoteUser('${u.id}')" class="text-[10px] bg-zinc-700 px-2 py-0.5 rounded hover:bg-zinc-600 text-white">Make DJ</button>`
+                    : ""
+                }
+            </div>`
     )
     .join("");
 }
 
 function promoteUser(id) {
   state.masterId = id;
-  // ลบการเซฟลง localStorage ออก
   state.users.forEach((u) => (u.isMaster = u.id === id));
   renderDashboard();
   broadcastState();
@@ -525,14 +713,24 @@ function handleSeek(val) {
   }
 }
 
+// อัปเดต Idle Bar ด้วยใน Loop
 setInterval(() => {
   if (player && isPlaying) {
     const c = player.getCurrentTime();
     const d = player.getDuration();
-    document.getElementById("time-curr").innerText = formatTime(c);
-    document.getElementById("time-dur").innerText = formatTime(d);
-    document.getElementById("prog-bar").style.width = `${(c / d) * 100}%`;
-    document.getElementById("seek-slider").value = (c / d) * 100;
+
+    if (d > 0) {
+      document.getElementById("time-curr").innerText = formatTime(c);
+      document.getElementById("time-dur").innerText = formatTime(d);
+
+      const pct = (c / d) * 100;
+      document.getElementById("prog-bar").style.width = `${pct}%`;
+      document.getElementById("seek-slider").value = pct;
+
+      // Update Idle Line
+      const idleLine = document.getElementById("idle-progress-line");
+      if (idleLine) idleLine.style.width = `${pct}%`;
+    }
   }
 }, 1000);
 
@@ -550,16 +748,22 @@ function closeModal(id) {
 }
 
 function switchTab(tab) {
-  ["dashboard", "settings"].forEach((t) => {
-    document.getElementById(`view-${t}`).classList.add("hidden");
-    const tabBtn = document.getElementById(`tab-${t}`);
-    tabBtn.classList.replace("border-red-600", "border-transparent");
-    tabBtn.classList.replace("text-white", "text-gray-500");
+  ["dashboard", "settings", "nextamp"].forEach((t) => {
+    const view = document.getElementById(`view-${t}`);
+    const btn = document.getElementById(`tab-${t}`);
+
+    if (view && btn) {
+      if (t === tab) {
+        view.classList.remove("hidden");
+        btn.classList.remove("border-transparent", "text-gray-500");
+        btn.classList.add("border-red-600", "text-white");
+      } else {
+        view.classList.add("hidden");
+        btn.classList.remove("border-red-600", "text-white");
+        btn.classList.add("border-transparent", "text-gray-500");
+      }
+    }
   });
-  document.getElementById(`view-${tab}`).classList.remove("hidden");
-  const activeBtn = document.getElementById(`tab-${tab}`);
-  activeBtn.classList.replace("border-transparent", "border-red-600");
-  activeBtn.classList.replace("text-gray-500", "text-white");
 }
 
 function toggleSetting(key) {
@@ -584,12 +788,14 @@ function updateQuality(val) {
 function updateSettingsUI() {
   const setBtnState = (id, isActive) => {
     const btn = document.getElementById(id);
-    btn.className = `w-10 h-6 rounded-full relative transition-colors ${
-      isActive ? "bg-green-600" : "bg-zinc-700"
-    }`;
-    btn.firstElementChild.className = `absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-      isActive ? "translate-x-5" : "translate-x-1"
-    }`;
+    if (btn) {
+      btn.className = `w-10 h-6 rounded-full relative transition-colors ${
+        isActive ? "bg-green-600" : "bg-zinc-700"
+      }`;
+      btn.firstElementChild.className = `absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+        isActive ? "translate-x-5" : "translate-x-1"
+      }`;
+    }
   };
 
   setBtnState("btn-reqInt", state.settings.reqInt);
@@ -597,14 +803,14 @@ function updateSettingsUI() {
 
   const wrap = document.getElementById("video-wrapper");
   if (state.settings.fit) {
-    // ใช้หน่วย dvw/dvh และ fixed เพื่อแก้ปัญหา Safe Area และให้เต็มจอจริง
     wrap.className =
       "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100dvw] h-[56.25dvw] min-h-[100dvh] min-w-[177.78dvh] pointer-events-none transition-all duration-500 z-0 bg-black";
   } else {
     wrap.className =
       "relative w-full h-full flex items-center justify-center transition-all duration-500";
   }
-  document.getElementById("sel-quality").value = state.settings.quality;
+  const qSel = document.getElementById("sel-quality");
+  if (qSel) qSel.value = state.settings.quality;
 }
 
 function toggleFullscreen() {
@@ -612,21 +818,24 @@ function toggleFullscreen() {
   else if (document.exitFullscreen) document.exitFullscreen();
 }
 
+// Reset Idle Logic: ถ้าไม่มีการขยับและไม่ได้เปิด Modal ให้เข้า Idle Mode
 function resetIdle() {
-  const header = document.getElementById("main-header");
-  const footer = document.getElementById("main-footer");
-  header.classList.remove("opacity-0-force");
-  footer.classList.remove("opacity-0-force");
+  // ลบ class idle-mode ออกเพื่อให้ UI แสดงกลับมา
+  document.body.classList.remove("idle-mode");
 
   clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
-    if (
-      document.getElementById("settings-modal").classList.contains("hidden") &&
-      document.getElementById("welcome-modal").classList.contains("hidden") &&
-      isAppStarted
-    ) {
-      header.classList.add("opacity-0-force");
-      footer.classList.add("opacity-0-force");
+    // เช็คว่า Modal ปิดอยู่หรือไม่
+    const settingsHidden = document
+      .getElementById("settings-modal")
+      .classList.contains("hidden");
+    const welcomeHidden = document
+      .getElementById("welcome-modal")
+      .classList.contains("hidden");
+
+    // ถ้า App เริ่มแล้ว และไม่มี Modal เปิดอยู่ ให้เข้า Idle
+    if (settingsHidden && welcomeHidden && isAppStarted) {
+      document.body.classList.add("idle-mode");
     }
   }, 3000);
 }

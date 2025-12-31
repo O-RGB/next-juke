@@ -1,4 +1,4 @@
-/* css/style.css */
+/* next-juke/css/style.css */
 
 /* Base Styles */
 body {
@@ -10,74 +10,24 @@ body {
 }
 
 /* Utilities */
-.hidden {
-  display: none !important;
-}
-.opacity-0-force {
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-.cursor-pointer {
-  cursor: pointer;
-}
+.hidden { display: none !important; }
+.opacity-0-force { opacity: 0 !important; pointer-events: none !important; }
+.cursor-pointer { cursor: pointer; }
 
-/* Safe Area Utilities (Full L R T B) */
-/* ใช้ตัวแปร env() เพื่อดึงค่าระยะปลอดภัยของหน้าจอ */
-/* Safe Area ล้วนๆ */
-.pt-safe {
-  padding-top: calc(1rem + env(safe-area-inset-top)) !important;
-}
-.pb-safe {
-  padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
-}
-.pl-safe {
-  padding-left: calc(1rem + env(safe-area-inset-left)) !important;
-}
-.pr-safe {
-  padding-right: calc(1rem + env(safe-area-inset-right)) !important;
-}
-
-/* แบบผสม Padding เดิม + Safe Area */
-/* Top & Bottom */
-.pt-safe-plus-2 {
-  padding-top: calc(1rem + env(safe-area-inset-top)) !important;
-} /* p-2 */
-.pb-safe-plus-6 {
-  padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
-} /* p-6 */
-
-/* Left & Right */
-.pl-safe-plus-4 {
-  padding-left: calc(1rem + env(safe-area-inset-left)) !important;
-} /* px-4 */
-.pr-safe-plus-4 {
-  padding-right: calc(1rem + env(safe-area-inset-right)) !important;
-} /* px-4 */
+/* Safe Area Utilities */
+.pt-safe { padding-top: calc(1rem + env(safe-area-inset-top)) !important; }
+.pb-safe { padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important; }
+.pl-safe { padding-left: calc(1rem + env(safe-area-inset-left)) !important; }
+.pr-safe { padding-right: calc(1rem + env(safe-area-inset-right)) !important; }
+/* Added extra padding for pushing footer up */
+.pb-safe-plus-8 { padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important; }
 
 /* Scrollbar Customization */
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-.modal-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-.modal-scroll::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-.modal-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
 
 /* UI Components */
 .glass-panel {
@@ -89,37 +39,81 @@ body {
 /* Range Slider */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  height: 16px;
-  width: 16px;
-  border-radius: 50%;
-  background: #ffffff;
-  cursor: pointer;
-  margin-top: -6px;
-  opacity: 0;
-  transition: opacity 0.2s;
+  height: 16px; width: 16px;
+  border-radius: 50%; background: #ffffff;
+  cursor: pointer; margin-top: -6px;
+  opacity: 0; transition: opacity 0.2s;
 }
-input[type="range"]:hover::-webkit-slider-thumb {
-  opacity: 1;
-}
+input[type="range"]:hover::-webkit-slider-thumb { opacity: 1; }
 
 /* Animations */
-.fade-transition {
-  transition: opacity 0.3s ease-in-out;
-}
-.fade-in {
-  animation: fadeIn 0.3s ease-in-out;
+.fade-transition { transition: opacity 0.5s ease-in-out; }
+.fade-in { animation: fadeIn 0.3s ease-in-out; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* --- IDLE MODE STYLES (Updated) --- */
+
+/* 1. Header Background: สั่ง Opacity 0 เพื่อให้พื้นหลังดำจางหายไป (นุ่มนวล) */
+.idle-mode #header-bg {
+    opacity: 0 !important;
 }
-.animate-in {
-  animation: fadeIn 0.5s ease-out forwards;
+
+/* 2. Header Content: ซ่อน Logo/Title ด้านซ้าย */
+.idle-mode .header-content-group {
+    opacity: 0;
+    transform: translateY(-20px);
+    pointer-events: none;
+}
+
+/* 3. Header Status: บังคับแสดงผลเสมอ และกดได้ */
+.idle-mode .header-status-group {
+    opacity: 1 !important;
+    pointer-events: auto;
+}
+
+/* 4. Footer: ซ่อน Footer ใหญ่ */
+.idle-mode #main-footer {
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+}
+
+/* 5. Slim Progress Bar (แสดงเมื่อ Idle) - เลื่อนขึ้นมาจากด้านล่าง */
+.idle-mode #idle-progress-line {
+    transform: translateY(0) !important;
+}
+
+/* --- Compact Modal Styles (SweetAlert2) --- */
+.compact-modal-popup {
+    border: 1px solid #374151 !important;
+    max-height: 95vh;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+}
+.compact-modal-title {
+    font-size: 1.1rem !important;
+    padding: 0.5rem 1rem 0 !important;
+}
+.compact-modal-content {
+    margin: 0.5em 0 !important;
+    overflow: hidden !important; 
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+.compact-modal-actions {
+    margin-top: 5px !important;
+    margin-bottom: 5px !important;
+}
+
+@media (max-height: 500px) {
+    .compact-modal-popup {
+        padding: 2px !important;
+    }
+    .swal2-input {
+        margin: 0.5em auto !important;
+        height: 2em !important;
+    }
 }
