@@ -15,34 +15,6 @@
     />
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="css/style.css" />
-
-    <style>
-      body {
-        overflow-y: auto;
-      }
-      /* Custom Layout adjustments for landscape phone */
-      @media (max-height: 500px) and (orientation: landscape) {
-        #master-controls {
-          grid-template-columns: repeat(4, 1fr) !important;
-        }
-        #master-controls > button {
-          padding: 0.5rem !important; /* Force smaller padding */
-        }
-        #master-controls .fa-solid {
-          font-size: 1rem !important;
-        }
-        #master-controls span {
-          font-size: 0.6rem !important;
-        }
-        /* Hide Seek buttons text to save space */
-        #master-controls button span {
-          display: none;
-        }
-        .pb-32 {
-          padding-bottom: 5rem !important;
-        }
-      }
-    </style>
   </head>
   <body
     class="flex flex-col h-screen overflow-hidden font-sans bg-black selection:bg-red-500 selection:text-white"
@@ -99,7 +71,10 @@
       </div>
     </div>
 
-    <div id="remote-ui" class="flex-1 flex flex-col hidden">
+    <div
+      id="remote-ui"
+      class="flex-1 flex flex-col hidden max-w-md mx-auto w-full bg-black h-full relative shadow-2xl"
+    >
       <div
         class="shrink-0 p-4 pt-safe flex justify-between items-center c-glass border-b-0 border-white/5 bg-zinc-900/50"
       >
@@ -133,161 +108,217 @@
         </div>
       </div>
 
-      <div class="flex-1 flex flex-col p-4 gap-4 overflow-y-auto pb-32">
-        <div class="c-glass p-4 rounded-2xl space-y-3">
-          <div class="flex items-center justify-between">
+      <div class="flex-1 overflow-y-auto p-5 pb-32 space-y-8 custom-scrollbar">
+        <section>
+          <div class="flex items-center gap-2 mb-2 px-1">
+            <i class="fa-solid fa-magnifying-glass text-red-500 text-xs"></i>
+            <h3
+              class="text-xs font-bold text-zinc-500 uppercase tracking-wider"
+            >
+              Search
+            </h3>
+          </div>
+          <div
+            onclick="openSearchModal()"
+            class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer hover:border-red-500 hover:bg-zinc-800 transition-all group shadow-sm active:scale-[0.99]"
+          >
+            <i
+              class="fa-solid fa-search text-zinc-500 group-hover:text-red-500 transition-colors"
+            ></i>
+            <span
+              class="text-zinc-400 text-sm group-hover:text-white transition-colors"
+              >ค้นหาเพลงใหม่...</span
+            >
             <div
-              class="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider"
+              class="ml-auto bg-zinc-800 rounded px-2 py-0.5 text-[10px] text-zinc-500 border border-zinc-700"
             >
-              <i class="fa-brands fa-youtube text-red-600 text-lg"></i> ขอเพลง
-              (YouTube)
+              Invidious API
             </div>
           </div>
+        </section>
 
-          <div class="flex gap-2">
-            <button
-              onclick="pasteFromClipboard()"
-              class="w-12 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700 active:scale-95 transition-transform"
+        <section>
+          <div class="flex items-center gap-2 mb-2 px-1">
+            <i class="fa-brands fa-youtube text-red-500 text-xs"></i>
+            <h3
+              class="text-xs font-bold text-zinc-500 uppercase tracking-wider"
             >
-              <i class="fa-solid fa-paste"></i>
-            </button>
-            <input
-              id="url-input"
-              type="text"
-              placeholder="วางลิงก์ YouTube ที่นี่..."
-              class="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-sm focus:border-red-600 outline-none transition-colors"
-            />
-            <button
-              onclick="addSong()"
-              id="add-btn"
-              class="w-12 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-gray-500 transition-colors"
-              disabled
-            >
-              <i class="fa-solid fa-plus"></i>
-            </button>
+              Paste Link
+            </h3>
           </div>
-
-          <div id="dj-add-options" class="hidden mt-2 px-1 flex justify-end items-end">
-            <label
-              class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none hover:text-white transition-colors"
-            >
+          <div class="c-glass p-1 rounded-2xl">
+            <div class="flex gap-2 p-1">
+              <button
+                onclick="pasteFromClipboard()"
+                class="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700 active:scale-95 transition-transform"
+              >
+                <i class="fa-solid fa-paste"></i>
+              </button>
               <input
-                type="checkbox"
-                id="chk-play-next"
-                class="w-4 h-4 rounded border-zinc-600 text-red-600 focus:ring-red-500 bg-zinc-800/50"
+                id="url-input"
+                type="text"
+                placeholder="วางลิงก์ YouTube..."
+                class="flex-1 min-w-0 bg-transparent px-2 text-sm text-white placeholder-zinc-600 outline-none"
               />
-              <span>แทรกคิวเพลง (Play Next)</span>
-            </label>
-          </div>
+              <button
+                onclick="addSong()"
+                id="add-btn"
+                class="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-gray-500 transition-colors"
+                disabled
+              >
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
 
-          <div
-            id="preview-box"
-            class="flex gap-3 bg-zinc-900/50 p-2 rounded-lg border border-white/5 hidden fade-in"
-          >
-            <img
-              id="prev-img"
-              src=""
-              class="w-16 h-12 object-cover rounded bg-zinc-800"
-            />
-            <div class="flex-1 min-w-0 flex flex-col justify-center">
-              <p
-                id="prev-title"
-                class="text-xs font-bold truncate text-white"
-              ></p>
-              <p class="text-[10px] text-gray-500">พร้อมเพิ่มเข้าคิว</p>
+            <div
+              id="preview-box"
+              class="hidden mt-2 mx-1 mb-1 p-2 bg-zinc-900/80 rounded-xl border border-white/5 flex gap-3 items-center fade-in"
+            >
+              <img
+                id="prev-img"
+                src=""
+                class="w-12 h-9 object-cover rounded bg-zinc-800"
+              />
+              <div class="flex-1 min-w-0">
+                <p
+                  id="prev-title"
+                  class="text-xs font-bold truncate text-white"
+                ></p>
+                <p class="text-[10px] text-gray-500">Ready to add</p>
+              </div>
+            </div>
+
+            <div id="dj-add-options" class="hidden px-2 pb-2 flex justify-end">
+              <label
+                class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none hover:text-white transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  id="chk-play-next"
+                  class="w-3 h-3 rounded border-zinc-600 text-red-600 focus:ring-red-500 bg-zinc-800/50"
+                />
+                <span>แทรกคิว (Play Next)</span>
+              </label>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div id="master-controls" class="hidden grid grid-cols-4 gap-3 fade-in">
-          <button
-            onclick="sendAction('SEEK', {amount: -5})"
-            class="c-btn c-btn-secondary p-4 rounded-2xl flex-col gap-1 h-auto"
-          >
-            <i class="fa-solid fa-rotate-left text-gray-400"></i
-            ><span class="text-[10px] font-bold text-gray-500">-5s</span>
-          </button>
-          <button
-            onclick="sendAction('PLAY')"
-            class="c-btn c-btn-secondary p-4 rounded-2xl flex-col gap-1 h-auto"
-          >
-            <i class="fa-solid fa-play text-green-500 text-lg"></i>
-          </button>
-          <button
-            onclick="sendAction('PAUSE')"
-            class="c-btn c-btn-secondary p-4 rounded-2xl flex-col gap-1 h-auto"
-          >
-            <i class="fa-solid fa-pause text-yellow-500 text-lg"></i>
-          </button>
-          <button
-            onclick="sendAction('SEEK', {amount: 5})"
-            class="c-btn c-btn-secondary p-4 rounded-2xl flex-col gap-1 h-auto"
-          >
-            <i class="fa-solid fa-rotate-right text-gray-400"></i
-            ><span class="text-[10px] font-bold text-gray-500">+5s</span>
-          </button>
-          <button
-            onclick="sendAction('NEXT')"
-            class="col-span-4 bg-gradient-to-r from-zinc-800 to-zinc-700 border border-zinc-600 p-4 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-lg active:scale-95 transition"
-          >
-            <i class="fa-solid fa-forward-step text-white"></i> เล่นเพลงถัดไป
-          </button>
+        <section id="master-controls" class="hidden fade-in">
+          <div class="flex items-center gap-2 mb-2 px-1 justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-red-500 text-xs"></i>
+              <h3
+                class="text-xs font-bold text-zinc-500 uppercase tracking-wider"
+              >
+                Controller
+              </h3>
+            </div>
+            <div id="fx-btn-container" class="flex gap-2">
+              <button
+                id="btn-open-fx"
+                onclick="checkFxAvailability(() => openModal('fx-modal'))"
+                class="text-[10px] font-bold bg-zinc-800 px-2 py-1 rounded text-pink-500 border border-zinc-700 hover:bg-zinc-700"
+              >
+                FX
+              </button>
+              <button
+                id="btn-open-eq"
+                onclick="checkFxAvailability(() => openModal('eq-modal'))"
+                class="text-[10px] font-bold bg-zinc-800 px-2 py-1 rounded text-green-500 border border-zinc-700 hover:bg-zinc-700"
+              >
+                EQ
+              </button>
+            </div>
+          </div>
 
           <div
-            id="fx-btn-container"
-            class="col-span-4 grid grid-cols-2 gap-3 mt-1"
+            class="bg-zinc-900/50 border border-white/5 rounded-3xl p-4 shadow-xl backdrop-blur-sm"
           >
-            <button
-              id="btn-open-fx"
-              onclick="checkFxAvailability(() => openModal('fx-modal'))"
-              class="c-btn c-btn-secondary font-bold"
+            <div class="flex items-center justify-between px-2">
+              <button
+                onclick="sendAction('SEEK', {amount: -5})"
+                class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/5 transition active:scale-95"
+              >
+                <i class="fa-solid fa-rotate-left text-sm"></i>
+              </button>
+
+              <div class="flex items-center gap-4">
+                <button
+                  onclick="sendAction('PAUSE')"
+                  class="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-yellow-400 border border-zinc-700 shadow active:scale-95 transition"
+                >
+                  <i class="fa-solid fa-pause text-lg"></i>
+                </button>
+                <button
+                  onclick="sendAction('PLAY')"
+                  class="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center text-white shadow-lg shadow-red-600/30 active:scale-95 transition hover:bg-red-500"
+                >
+                  <i class="fa-solid fa-play text-2xl pl-1"></i>
+                </button>
+                <button
+                  onclick="sendAction('NEXT')"
+                  class="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 border border-zinc-700 shadow active:scale-95 transition hover:text-red-500"
+                >
+                   <i class="fa-solid fa-forward-step text-lg"></i>
+                </button>
+              </div>
+
+              <button
+                onclick="sendAction('SEEK', {amount: 5})"
+                class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/5 transition active:scale-95"
+              >
+                <i class="fa-solid fa-rotate-right text-sm"></i>
+              </button>
+            </div>
+
+            <!-- <button
+              onclick="sendAction('NEXT')"
+              class="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition active:scale-[0.98]"
             >
-              <i class="fas fa-sliders-h text-pink-500"></i> FX
-            </button>
-            <button
-              id="btn-open-eq"
-              onclick="checkFxAvailability(() => openModal('eq-modal'))"
-              class="c-btn c-btn-secondary font-bold"
-            >
-              <i class="fas fa-chart-bar text-green-500"></i> EQ
-            </button>
+              <i class="fa-solid fa-forward-step"></i> Skip / Next Song
+            </button> -->
           </div>
-        </div>
+        </section>
 
         <div
           id="non-master-msg"
-          class="flex-1 flex flex-col items-center justify-center text-zinc-600 border-2 border-dashed border-zinc-800 rounded-2xl p-6 min-h-[120px]"
+          class="hidden flex flex-col items-center justify-center text-zinc-600 border-2 border-dashed border-zinc-800 rounded-2xl p-6 min-h-[120px]"
         >
-          <p class="text-sm">รอ Master DJ ควบคุมเพลง</p>
+          <i class="fa-solid fa-lock mb-2 text-xl"></i>
+          <p class="text-sm font-bold">Controller Locked</p>
+          <p class="text-xs">รอ DJ ควบคุมเพลง</p>
         </div>
       </div>
 
       <div
-        class="fixed bottom-0 left-0 w-full bg-zinc-900 border-t border-zinc-800 p-4 pb-safe z-20"
+        class="fixed bottom-0 left-0 w-full p-4 pb-safe z-20 pointer-events-none"
       >
-        <div class="flex justify-between gap-4 w-full">
+        <div class="max-w-md mx-auto w-full pointer-events-auto">
           <button
             onclick="openModal('queue-modal')"
-            class="c-btn c-btn-secondary flex-1 rounded-xl text-sm"
+            class="w-full bg-zinc-900/90 backdrop-blur-md border border-zinc-700 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between active:scale-[0.99] transition-transform"
           >
-            <i class="fa-solid fa-list text-gray-400"></i> คิวเพลง (<span
-              id="q-count-btn"
-              >0</span
-            >)
-          </button>
-          <button
-            id="stop-btn"
-            onclick="sendAction('STOP')"
-            class="hidden bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition"
-          >
-            <i class="fa-solid fa-stop"></i> จบปาร์ตี้
+            <div class="flex items-center gap-3">
+              <div
+                class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-red-500"
+              >
+                <i class="fa-solid fa-music"></i>
+              </div>
+              <div class="text-left">
+                <div class="font-bold text-sm">รายการคิวเพลง</div>
+                <div class="text-[10px] text-gray-400">
+                  คลิกเพื่อดูรายการ (<span id="q-count-btn">0</span>)
+                </div>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-up text-zinc-500"></i>
           </button>
         </div>
       </div>
     </div>
 
     <div id="alert-modal" class="c-modal-backdrop hidden">
-      <div class="c-modal-content" style="max-width: 400px">
+      <div class="c-modal-content" style="max-width: 400px; min-height: 200px">
         <div class="c-modal-header border-b-0 pb-0">
           <h3 id="alert-title" class="text-xl font-bold text-white">Alert</h3>
         </div>
@@ -307,7 +338,7 @@
     </div>
 
     <div id="queue-modal" class="c-modal-backdrop hidden">
-      <div class="c-modal-content">
+      <div class="c-modal-content c-modal-fixed">
         <div class="c-modal-header">
           <h3 class="font-bold text-white">รายการคิวเพลง</h3>
           <button
@@ -317,12 +348,12 @@
             <i class="fa-solid fa-times"></i>
           </button>
         </div>
-        <div id="queue-list-modal" class="c-modal-body space-y-2"></div>
+        <div id="queue-list-modal" class="c-modal-body space-y-2 p-4"></div>
       </div>
     </div>
 
     <div id="fx-modal" class="c-modal-backdrop hidden">
-      <div class="c-modal-content">
+      <div class="c-modal-content" style="min-height: 350px">
         <div class="c-modal-header">
           <h3 class="text-xl font-bold text-white">
             <i class="fas fa-sliders-h mr-2 text-pink-500"></i>Master FX
@@ -400,7 +431,7 @@
     </div>
 
     <div id="eq-modal" class="c-modal-backdrop hidden">
-      <div class="c-modal-content" style="max-width: 500px">
+      <div class="c-modal-content" style="max-width: 500px; min-height: 350px">
         <div class="c-modal-header">
           <h3 class="text-xl font-bold text-white">
             <i class="fas fa-chart-bar mr-2 text-green-500"></i>Equalizer
@@ -435,9 +466,7 @@
                     (label, i) => `
                         <div class="flex flex-col items-center gap-2 flex-1 min-w-[30px]">
                             <div class="eq-slider-wrapper">
-                                <input type="range" min="-12" max="12" step="1" value="0" 
-                                    oninput="setEq(${i}, this.value)"
-                                    class="eq-slider-input">
+                                <input type="range" min="-12" max="12" step="1" value="0" oninput="setEq(${i}, this.value)" class="eq-slider-input">
                             </div>
                             <span class="text-[9px] text-zinc-500 font-mono -mt-2">${label}</span>
                         </div>
@@ -458,6 +487,122 @@
           >
             Done
           </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="search-modal" class="c-modal-backdrop hidden">
+      <div
+        class="c-modal-content c-modal-fixed bg-zinc-900 max-w-md mx-auto w-full"
+      >
+        <div
+          class="c-modal-header p-4 gap-2 border-b border-zinc-800 bg-zinc-900 shrink-0 z-20"
+        >
+          <div id="search-header-bar" class="relative flex-1 flex gap-2">
+            <div class="relative flex-1 group">
+              <i
+                class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-red-500 transition-colors"
+              ></i>
+
+              <input
+                id="inv-search-input"
+                type="text"
+                placeholder="พิมพ์ชื่อเพลง..."
+                class="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-10 pr-4 py-3 text-white focus:border-red-500 outline-none transition-colors"
+                onkeydown="if(event.key === 'Enter') runSearch()"
+                oninput="handleSearchInput(this.value)"
+                autocomplete="off"
+              />
+
+              <div
+                id="search-suggestions"
+                class="absolute top-full left-0 right-0 mt-2 bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden hidden z-30 max-h-60 overflow-y-auto custom-scrollbar"
+              ></div>
+            </div>
+            <button
+              onclick="runSearch()"
+              class="c-btn c-btn-primary rounded-xl px-4 whitespace-nowrap"
+            >
+              ค้นหา
+            </button>
+          </div>
+
+          <div id="server-header-bar" class="hidden flex-1 flex items-center">
+            <h3 class="text-white font-bold ml-2">
+              <i class="fa-solid fa-server mr-2 text-green-500"></i>Server
+              Status
+            </h3>
+          </div>
+          <button
+            onclick="toggleServerView()"
+            class="w-10 h-10 rounded-full bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition-colors relative"
+          >
+            <i class="fa-solid fa-server"></i>
+            <div
+              id="server-indicator"
+              class="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full"
+            ></div>
+          </button>
+          <button
+            onclick="closeModal('search-modal')"
+            class="c-btn c-btn-ghost w-10 h-10 rounded-full flex items-center justify-center p-0"
+          >
+            <i class="fa-solid fa-times text-lg"></i>
+          </button>
+        </div>
+
+        <div
+          id="search-results-container"
+          class="c-modal-body bg-black/50 p-4 space-y-3 custom-scrollbar relative"
+        >
+          <div
+            id="search-placeholder"
+            class="absolute inset-0 flex flex-col items-center justify-center text-zinc-600 space-y-4 opacity-60 pointer-events-none"
+          >
+            <i class="fa-brands fa-youtube text-6xl"></i>
+            <p class="text-sm">พิมพ์ชื่อเพลงเพื่อค้นหา</p>
+          </div>
+
+          <div
+            id="search-loader"
+            class="hidden absolute inset-0 flex items-center justify-center z-10 bg-black/50 backdrop-blur-sm"
+          >
+            <div class="flex flex-col items-center gap-2">
+              <i
+                class="fa-solid fa-circle-notch fa-spin text-red-500 text-3xl"
+              ></i>
+              <span class="text-xs text-zinc-500">Searching...</span>
+            </div>
+          </div>
+
+          <div id="search-list" class="space-y-3 pb-safe"></div>
+        </div>
+
+        <div
+          id="server-status-container"
+          class="c-modal-body hidden bg-black/50 p-4 space-y-3 custom-scrollbar"
+        >
+          <div
+            class="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl flex items-start gap-3 mb-4"
+          >
+            <i class="fa-solid fa-circle-info text-blue-400 mt-0.5"></i>
+            <div class="text-xs text-blue-200">
+              <p class="font-bold mb-1">Invidious Instance List</p>
+              <p class="opacity-70">รายการ Server ทั้งหมด</p>
+            </div>
+          </div>
+          <div class="flex justify-between items-center mb-2 px-1">
+            <span class="text-xs text-zinc-500 uppercase font-bold"
+              >Servers</span
+            >
+            <button
+              onclick="fetchAndCacheInstanceList(true)"
+              class="text-xs text-red-400 hover:text-white flex items-center gap-1"
+            >
+              <i class="fa-solid fa-rotate"></i> Refresh List
+            </button>
+          </div>
+          <div id="server-list-content" class="space-y-2"></div>
         </div>
       </div>
     </div>

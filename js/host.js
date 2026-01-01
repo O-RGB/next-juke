@@ -277,9 +277,27 @@ function startApp() {
   resetIdle();
 }
 
+// ปรับปรุงฟังก์ชันนี้ให้เช็คละเอียดขึ้น
 function checkFullscreenSupport() {
-  if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
-    document.getElementById("btn-fullscreen").classList.remove("hidden");
+  const doc = document;
+  const docEl = doc.documentElement;
+
+  // เช็คทุก Prefix ที่เป็นไปได้
+  const requestMethod =
+    docEl.requestFullscreen ||
+    docEl.webkitRequestFullscreen ||
+    docEl.mozRequestFullScreen ||
+    docEl.msRequestFullscreen;
+  const isEnabled =
+    document.fullscreenEnabled ||
+    document.webkitFullscreenEnabled ||
+    document.mozFullScreenEnabled ||
+    document.msFullscreenEnabled;
+
+  // ถ้ามี API ให้ใช้ ก็แสดงปุ่มเลย
+  if (requestMethod) {
+    const btn = document.getElementById("btn-fullscreen");
+    if (btn) btn.classList.remove("hidden");
   }
 }
 
@@ -299,10 +317,12 @@ function initPeer() {
     linkEl.innerText = url;
     linkEl.href = url;
 
-    new QRCode(document.getElementById("qrcode"), {
+    const qrEl = document.getElementById("qrcode");
+    qrEl.innerHTML = ""; // เคลียร์ของเก่าก่อนเผื่อมี
+    new QRCode(qrEl, {
       text: url,
-      width: 160,
-      height: 160,
+      width: 512, // เพิ่มขนาดเจนรูป
+      height: 512, // เพิ่มขนาดเจนรูป
       colorDark: "#000000",
       colorLight: "#ffffff",
       correctLevel: QRCode.CorrectLevel.L,
@@ -856,19 +876,38 @@ function updateSettingsUI() {
   if (qSel) qSel.value = state.settings.quality;
 }
 
+// ปรับปรุงฟังก์ชัน Toggle ให้รองรับทุกค่าย
 function toggleFullscreen() {
   const doc = document;
   const docEl = doc.documentElement;
 
   const requestMethod =
-    docEl.requestFullscreen || docEl.webkitRequestFullscreen;
-  const exitMethod = doc.exitFullscreen || doc.webkitExitFullscreen;
-  const isFullscreen = doc.fullscreenElement || doc.webkitFullscreenElement;
+    docEl.requestFullscreen ||
+    docEl.webkitRequestFullscreen ||
+    docEl.mozRequestFullScreen ||
+    docEl.msRequestFullscreen;
+
+  const exitMethod =
+    doc.exitFullscreen ||
+    doc.webkitExitFullscreen ||
+    doc.mozCancelFullScreen ||
+    doc.msExitFullscreen;
+
+  const isFullscreen =
+    doc.fullscreenElement ||
+    doc.webkitFullscreenElement ||
+    doc.mozFullScreenElement ||
+    doc.msFullscreenElement;
 
   if (!isFullscreen && requestMethod) {
-    requestMethod.call(docEl);
+    // ใช้ .call(docEl) และดัก catch error เผื่อไว้
+    requestMethod
+      .call(docEl)
+      .catch((err) => console.log("Fullscreen Allow Error:", err));
   } else if (isFullscreen && exitMethod) {
-    exitMethod.call(doc);
+    exitMethod
+      .call(doc)
+      .catch((err) => console.log("Fullscreen Exit Error:", err));
   }
 }
 
