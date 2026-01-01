@@ -1,11 +1,12 @@
 {
-  "name": "NextCast | Wireless YouTube Controller",
+  "name": "NextCast Remote",
   "short_name": "NextCast",
   "description": "Wireless YouTube Controller",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
-  "start_url": "/",
+  "start_url": "/remote.html",
+  "scope": "/",
   "icons": [
     {
       "src": "https://next-cast.vercel.app/assets/icon-t.png",

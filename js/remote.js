@@ -2,15 +2,16 @@
 
 const urlParams = new URLSearchParams(window.location.search);
 
-// --- [ส่วนที่เพิ่ม 1] ระบบกู้คืน Host ID ---
-// ตรวจสอบว่ามี Host ID ใน URL หรือไม่ ถ้าไม่มีให้ลองหาจากความจำเครื่อง (กรณีเปิดผ่านการ Share)
+// --- [ส่วนที่ 1] ระบบ Auto-Recovery Host ID ---
+// 1. ลองดึง Host ID จาก URL ก่อน (กรณี Scan QR เข้ามา)
 let hostId = urlParams.get("host");
 
-if (!hostId) {
-  hostId = localStorage.getItem("nj_last_host_id");
-} else {
-  // ถ้ามี Host ID ให้บันทึกไว้ใช้ครั้งหน้า
+if (hostId) {
+  // ถ้ามีใน URL ให้บันทึกลงเครื่องทันที (Update ห้องล่าสุด)
   localStorage.setItem("nj_last_host_id", hostId);
+} else {
+  // 2. ถ้าไม่มีใน URL (เช่น เปิดจากไอคอน PWA หรือ Share Target) ให้ดึงจากความจำเครื่อง
+  hostId = localStorage.getItem("nj_last_host_id");
 }
 // ----------------------------------------
 
@@ -24,7 +25,7 @@ let pendingShareLink = null;
 const savedProfile = localStorage.getItem("nj_client_identity");
 let clientProfile = savedProfile ? JSON.parse(savedProfile) : null;
 
-// --- [ส่วนที่เพิ่ม 2] ฟังก์ชันช่วยแกะลิงก์จากข้อความ ---
+// --- [ส่วนที่ 2] ฟังก์ชันช่วยแกะลิงก์จากข้อความ ---
 function extractUrlFromText(text) {
   if (!text) return null;
   // Regex หา http หรือ https
@@ -37,17 +38,17 @@ function extractUrlFromText(text) {
 window.onload = () => {
   // ตรวจสอบ Host ID ก่อนเริ่มทำงาน
   if (!hostId) {
+    // กรณีไม่เคยเข้าห้องมาก่อนเลย แล้วเปิดแอป
     updateLoadingStatus(
-      "ไม่พบ Host ID (กรุณาสแกน QR Code เพื่อเข้าห้องก่อน 1 ครั้ง)",
+      "ไม่พบข้อมูลห้องเดิม กรุณาสแกน QR Code เพื่อเชื่อมต่อครั้งแรก",
       true
     );
     document.getElementById("connection-overlay").classList.remove("hidden");
-    // ซ่อนหน้า Login ไม่ให้กดเข้าได้ถ้าไม่มี Host
     document.getElementById("login-screen").classList.add("hidden");
     return;
   }
 
-  // --- [ส่วนที่เพิ่ม 3] ตรวจสอบ Share Target Params ---
+  // --- [ส่วนที่ 3] ตรวจสอบ Share Target Params ---
   const sharedUrl = urlParams.get("url");
   const sharedText = urlParams.get("text");
   const sharedTitle = urlParams.get("title");
@@ -123,6 +124,7 @@ function initPeer() {
       "border-yellow-500"
     );
 
+    // เชื่อมต่อไปยัง hostId ที่ได้มาจาก URL หรือ LocalStorage
     conn = peer.connect(hostId);
 
     conn.on("open", () => {
@@ -137,7 +139,7 @@ function initPeer() {
       conn.send({ type: "JOIN", user: user });
       conn.send({ type: "GET_STATE" });
 
-      // --- [ส่วนที่เพิ่ม 4] ส่งเพลงอัตโนมัติถ้ามี Pending Link ---
+      // --- [ส่วนที่ 4] ส่งเพลงอัตโนมัติถ้ามี Pending Link ---
       if (pendingShareLink) {
         console.log("Auto sending shared link:", pendingShareLink);
 
@@ -177,6 +179,13 @@ function initPeer() {
 
   peer.on("error", (err) => {
     updateLoadingStatus("เกิดข้อผิดพลาด: " + err.type, true);
+    // ถ้าต่อ Host ไม่ติด อาจจะเป็นไปได้ว่า Host เปลี่ยนเลขห้อง หรือ Offline
+    if (err.type === "peer-unavailable") {
+      updateLoadingStatus(
+        "ไม่พบห้องนี้ (Host อาจจะปิดอยู่ หรือเปลี่ยนเลขห้อง)",
+        true
+      );
+    }
     setTimeout(checkAndReconnect, 3000);
   });
 }
