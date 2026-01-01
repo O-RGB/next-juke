@@ -589,6 +589,7 @@
             <i class="fa-solid fa-forward-step text-xl"></i>
           </button>
         </div>
+
         <div class="flex-1 flex items-center gap-4 mb-[19px]">
           <span
             id="time-curr"
@@ -617,9 +618,22 @@
             >0:00</span
           >
         </div>
+
         <div
           class="flex items-center gap-3 border-l border-white/10 pl-2 mb-1.5"
         >
+          <button
+            onclick="searchLib.open()"
+            class="text-white/70 hover:text-white p-2 transition"
+          >
+            <i class="fa-solid fa-magnifying-glass text-lg"></i>
+          </button>
+          <!-- <button
+            onclick="searchLib.open()"
+            class="text-white hover:text-red-500 p-3 bg-white/10 hover:bg-white/20 rounded-full w-12 h-12 flex items-center justify-center transition-all shadow-lg active:scale-95 border border-white/5"
+          >
+            <i class="fa-solid fa-magnifying-glass text-lg"></i>
+          </button> -->
           <button
             id="btn-fullscreen"
             onclick="toggleFullscreen()"
@@ -635,6 +649,74 @@
           </button>
         </div>
       </footer>
+
+      <div id="search-modal" class="c-modal-backdrop hidden">
+        <div
+          class="c-modal-content c-modal-fixed bg-zinc-900 max-w-md mx-auto w-full flex flex-col min-h-[60vh]"
+        >
+          <div
+            class="c-modal-header p-4 gap-2 border-b border-zinc-800 bg-zinc-900 shrink-0 z-30 relative"
+          >
+            <div class="relative flex-1 group">
+              <i
+                class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+              ></i>
+              <input
+                id="inv-search-input"
+                type="text"
+                placeholder="ค้นหาเพลง YouTube..."
+                class="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-10 pr-4 py-3 text-white focus:border-red-500 outline-none transition-colors"
+                autocomplete="off"
+              />
+
+              <div
+                id="search-suggestions"
+                class="absolute top-full left-0 right-0 mt-2 bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden hidden z-50 max-h-60 overflow-y-auto custom-scrollbar"
+              ></div>
+            </div>
+
+            <button
+              id="btn-trigger-search"
+              class="w-12 h-12 flex items-center justify-center bg-zinc-800 hover:bg-red-600 border border-zinc-700 hover:border-red-500 rounded-xl transition-colors shrink-0 text-white"
+            >
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+
+            <button
+              onclick="closeModal('search-modal')"
+              class="c-btn c-btn-ghost w-10 h-10 rounded-full flex items-center justify-center p-0"
+            >
+              <i class="fa-solid fa-times text-lg"></i>
+            </button>
+          </div>
+
+          <div
+            class="c-modal-body bg-black/50 p-4 space-y-3 custom-scrollbar relative z-10 flex-1"
+          >
+            <div
+              id="search-placeholder"
+              class="absolute inset-0 flex flex-col items-center justify-center text-zinc-600 space-y-4 opacity-60 pointer-events-none"
+            >
+              <i class="fa-brands fa-youtube text-6xl"></i>
+              <p class="text-sm">พิมพ์ชื่อเพลงเพื่อค้นหา</p>
+            </div>
+
+            <div
+              id="search-loader"
+              class="hidden absolute inset-0 flex items-center justify-center z-20 bg-black/50 backdrop-blur-sm"
+            >
+              <div class="flex flex-col items-center gap-2">
+                <i
+                  class="fa-solid fa-circle-notch fa-spin text-red-500 text-3xl"
+                ></i>
+                <span class="text-xs text-zinc-500">Searching...</span>
+              </div>
+            </div>
+
+            <div id="search-list" class="space-y-3 pb-safe"></div>
+          </div>
+        </div>
+      </div>
 
       <div
         id="idle-progress-line"
@@ -890,6 +972,7 @@
 
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/youtube-search.js"></script>
     <script src="js/host.js"></script>
   </body>
 </html>

@@ -2,6 +2,7 @@ let wakeLock = null;
 let player, peer, peerId;
 let connections = [];
 let isAppStarted = false;
+let searchLib;
 
 let state = {
   queue: [],
@@ -265,6 +266,24 @@ function startApp() {
 
     checkExtension(false);
   }, 700);
+
+  searchLib = new YouTubeSearch({
+    onSelect: (songData) => {
+      const song = {
+        id: songData.id,
+        title: songData.title,
+        thumbnail: songData.thumbnail,
+        sender: "Host (DJ)",
+      };
+
+      state.queue.push(song);
+      showToast(`Added: ${song.title}`, "success");
+      renderDashboard();
+      broadcastState();
+
+      if (!state.currentSong && state.queue.length === 1) triggerNext();
+    },
+  });
 
   initPlayer();
   initPeer();

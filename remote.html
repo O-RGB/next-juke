@@ -119,7 +119,7 @@
             </h3>
           </div>
           <div
-            onclick="openSearchModal()"
+            onclick="searchLib.open()"
             class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer hover:border-red-500 hover:bg-zinc-800 transition-all group shadow-sm active:scale-[0.99]"
           >
             <i
@@ -259,7 +259,7 @@
                   onclick="sendAction('NEXT')"
                   class="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 border border-zinc-700 shadow active:scale-95 transition hover:text-red-500"
                 >
-                   <i class="fa-solid fa-forward-step text-lg"></i>
+                  <i class="fa-solid fa-forward-step text-lg"></i>
                 </button>
               </div>
 
@@ -493,56 +493,35 @@
 
     <div id="search-modal" class="c-modal-backdrop hidden">
       <div
-        class="c-modal-content c-modal-fixed bg-zinc-900 max-w-md mx-auto w-full"
+        class="c-modal-content c-modal-fixed bg-zinc-900 max-w-md mx-auto w-full flex flex-col min-h-[60vh]"
       >
         <div
-          class="c-modal-header p-4 gap-2 border-b border-zinc-800 bg-zinc-900 shrink-0 z-20"
+          class="c-modal-header p-4 gap-2 border-b border-zinc-800 bg-zinc-900 shrink-0 z-30 relative"
         >
-          <div id="search-header-bar" class="relative flex-1 flex gap-2">
-            <div class="relative flex-1 group">
-              <i
-                class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-red-500 transition-colors"
-              ></i>
-
-              <input
-                id="inv-search-input"
-                type="text"
-                placeholder="พิมพ์ชื่อเพลง..."
-                class="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-10 pr-4 py-3 text-white focus:border-red-500 outline-none transition-colors"
-                onkeydown="if(event.key === 'Enter') runSearch()"
-                oninput="handleSearchInput(this.value)"
-                autocomplete="off"
-              />
-
-              <div
-                id="search-suggestions"
-                class="absolute top-full left-0 right-0 mt-2 bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden hidden z-30 max-h-60 overflow-y-auto custom-scrollbar"
-              ></div>
-            </div>
-            <button
-              onclick="runSearch()"
-              class="c-btn c-btn-primary rounded-xl px-4 whitespace-nowrap"
-            >
-              ค้นหา
-            </button>
-          </div>
-
-          <div id="server-header-bar" class="hidden flex-1 flex items-center">
-            <h3 class="text-white font-bold ml-2">
-              <i class="fa-solid fa-server mr-2 text-green-500"></i>Server
-              Status
-            </h3>
-          </div>
-          <button
-            onclick="toggleServerView()"
-            class="w-10 h-10 rounded-full bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition-colors relative"
-          >
-            <i class="fa-solid fa-server"></i>
+          <div class="relative flex-1 group">
+            <i
+              class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+            ></i>
+            <input
+              id="inv-search-input"
+              type="text"
+              placeholder="ค้นหาเพลง YouTube..."
+              class="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-10 pr-4 py-3 text-white focus:border-red-500 outline-none transition-colors"
+              autocomplete="off"
+            />
             <div
-              id="server-indicator"
-              class="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full"
+              id="search-suggestions"
+              class="absolute top-full left-0 right-0 mt-2 bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden hidden z-50 max-h-60 overflow-y-auto custom-scrollbar"
             ></div>
+          </div>
+
+          <button
+            id="btn-trigger-search"
+            class="w-12 h-12 flex items-center justify-center bg-zinc-800 hover:bg-red-600 border border-zinc-700 hover:border-red-500 rounded-xl transition-colors shrink-0 text-white"
+          >
+            <i class="fa-solid fa-magnifying-glass"></i>
           </button>
+
           <button
             onclick="closeModal('search-modal')"
             class="c-btn c-btn-ghost w-10 h-10 rounded-full flex items-center justify-center p-0"
@@ -552,8 +531,7 @@
         </div>
 
         <div
-          id="search-results-container"
-          class="c-modal-body bg-black/50 p-4 space-y-3 custom-scrollbar relative"
+          class="c-modal-body bg-black/50 p-4 space-y-3 custom-scrollbar relative z-10 flex-1"
         >
           <div
             id="search-placeholder"
@@ -565,7 +543,7 @@
 
           <div
             id="search-loader"
-            class="hidden absolute inset-0 flex items-center justify-center z-10 bg-black/50 backdrop-blur-sm"
+            class="hidden absolute inset-0 flex items-center justify-center z-20 bg-black/50 backdrop-blur-sm"
           >
             <div class="flex flex-col items-center gap-2">
               <i
@@ -577,38 +555,12 @@
 
           <div id="search-list" class="space-y-3 pb-safe"></div>
         </div>
-
-        <div
-          id="server-status-container"
-          class="c-modal-body hidden bg-black/50 p-4 space-y-3 custom-scrollbar"
-        >
-          <div
-            class="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl flex items-start gap-3 mb-4"
-          >
-            <i class="fa-solid fa-circle-info text-blue-400 mt-0.5"></i>
-            <div class="text-xs text-blue-200">
-              <p class="font-bold mb-1">Invidious Instance List</p>
-              <p class="opacity-70">รายการ Server ทั้งหมด</p>
-            </div>
-          </div>
-          <div class="flex justify-between items-center mb-2 px-1">
-            <span class="text-xs text-zinc-500 uppercase font-bold"
-              >Servers</span
-            >
-            <button
-              onclick="fetchAndCacheInstanceList(true)"
-              class="text-xs text-red-400 hover:text-white flex items-center gap-1"
-            >
-              <i class="fa-solid fa-rotate"></i> Refresh List
-            </button>
-          </div>
-          <div id="server-list-content" class="space-y-2"></div>
-        </div>
       </div>
     </div>
 
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/youtube-search.js"></script>
     <script src="js/remote.js"></script>
   </body>
 </html>
