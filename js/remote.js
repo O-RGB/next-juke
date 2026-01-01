@@ -1,73 +1,20 @@
 // next-juke/js/remote.js
 
 const urlParams = new URLSearchParams(window.location.search);
-
-// --- [ส่วนที่ 1] ระบบ Auto-Recovery Host ID ---
-// 1. ลองดึง Host ID จาก URL ก่อน (กรณี Scan QR เข้ามา)
-let hostId = urlParams.get("host");
-
-if (hostId) {
-  // ถ้ามีใน URL ให้บันทึกลงเครื่องทันที (Update ห้องล่าสุด)
-  localStorage.setItem("nj_last_host_id", hostId);
-} else {
-  // 2. ถ้าไม่มีใน URL (เช่น เปิดจากไอคอน PWA หรือ Share Target) ให้ดึงจากความจำเครื่อง
-  hostId = localStorage.getItem("nj_last_host_id");
-}
-// ----------------------------------------
+const hostId = urlParams.get("host");
 
 let peer, conn, user;
 let masterId = null;
 let isHostFxInstalled = false;
 
-// ตัวแปรเก็บลิงก์ที่ถูกแชร์มา (รอส่งเมื่อเชื่อมต่อสำเร็จ)
-let pendingShareLink = null;
-
 const savedProfile = localStorage.getItem("nj_client_identity");
 let clientProfile = savedProfile ? JSON.parse(savedProfile) : null;
 
-// --- [ส่วนที่ 2] ฟังก์ชันช่วยแกะลิงก์จากข้อความ ---
-function extractUrlFromText(text) {
-  if (!text) return null;
-  // Regex หา http หรือ https
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const match = text.match(urlRegex);
-  return match ? match[0] : null;
-}
-// ------------------------------------------------
-
 window.onload = () => {
-  // ตรวจสอบ Host ID ก่อนเริ่มทำงาน
   if (!hostId) {
-    // กรณีไม่เคยเข้าห้องมาก่อนเลย แล้วเปิดแอป
-    updateLoadingStatus(
-      "ไม่พบข้อมูลห้องเดิม กรุณาสแกน QR Code เพื่อเชื่อมต่อครั้งแรก",
-      true
-    );
-    document.getElementById("connection-overlay").classList.remove("hidden");
-    document.getElementById("login-screen").classList.add("hidden");
+    updateLoadingStatus("ไม่พบ Host ID (กรุณาสแกน QR Code ใหม่)", true);
     return;
   }
-
-  // --- [ส่วนที่ 3] ตรวจสอบ Share Target Params ---
-  const sharedUrl = urlParams.get("url");
-  const sharedText = urlParams.get("text");
-  const sharedTitle = urlParams.get("title");
-
-  // YouTube Android มักส่งลิงก์มาใน 'text' ส่วน iOS อาจมาใน 'url'
-  const foundLink = sharedUrl || extractUrlFromText(sharedText);
-
-  if (
-    foundLink &&
-    (foundLink.includes("youtube.com") || foundLink.includes("youtu.be"))
-  ) {
-    pendingShareLink = foundLink;
-    showToast(`ได้รับลิงก์: ${sharedTitle || "YouTube Video"}`);
-
-    // ใส่ลิงก์รอไว้ในช่อง input เผื่อผู้ใช้กดส่งเองหรือดู Preview
-    const inputEl = document.getElementById("url-input");
-    if (inputEl) inputEl.value = pendingShareLink;
-  }
-  // -------------------------------------------------
 
   const main = document.getElementById("remote-ui").querySelector(".flex-1");
   if (main) main.classList.add("overflow-y-auto", "overscroll-contain");
@@ -124,7 +71,6 @@ function initPeer() {
       "border-yellow-500"
     );
 
-    // เชื่อมต่อไปยัง hostId ที่ได้มาจาก URL หรือ LocalStorage
     conn = peer.connect(hostId);
 
     conn.on("open", () => {
@@ -138,22 +84,6 @@ function initPeer() {
 
       conn.send({ type: "JOIN", user: user });
       conn.send({ type: "GET_STATE" });
-
-      // --- [ส่วนที่ 4] ส่งเพลงอัตโนมัติถ้ามี Pending Link ---
-      if (pendingShareLink) {
-        console.log("Auto sending shared link:", pendingShareLink);
-
-        // set value ให้ input เพื่อให้ addSong() ทำงานได้
-        const inputEl = document.getElementById("url-input");
-        if (inputEl) inputEl.value = pendingShareLink;
-
-        // หน่วงเวลานิดนึงเพื่อให้สถานะ User อัปเดตฝั่ง Host ก่อนส่งเพลง
-        setTimeout(() => {
-          addSong();
-          pendingShareLink = null; // เคลียร์ค่าทิ้ง
-        }, 800);
-      }
-      // ----------------------------------------------------
     });
 
     conn.on("data", (data) => {
@@ -179,13 +109,6 @@ function initPeer() {
 
   peer.on("error", (err) => {
     updateLoadingStatus("เกิดข้อผิดพลาด: " + err.type, true);
-    // ถ้าต่อ Host ไม่ติด อาจจะเป็นไปได้ว่า Host เปลี่ยนเลขห้อง หรือ Offline
-    if (err.type === "peer-unavailable") {
-      updateLoadingStatus(
-        "ไม่พบห้องนี้ (Host อาจจะปิดอยู่ หรือเปลี่ยนเลขห้อง)",
-        true
-      );
-    }
     setTimeout(checkAndReconnect, 3000);
   });
 }
