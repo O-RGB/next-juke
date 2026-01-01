@@ -1,3 +1,5 @@
+// next-juke/js/host.js
+
 let wakeLock = null;
 let player, peer, peerId;
 let connections = [];
@@ -9,6 +11,8 @@ let state = {
   currentSong: null,
   users: [],
   masterId: null,
+  // [NEW] เพิ่ม state เพื่อบอกว่ากำลังนับถอยหลังเปลี่ยนเพลง
+  isTransitioning: false,
   settings: {
     reqInt: localStorage.getItem("nj_reqInt") !== "false",
     fit: localStorage.getItem("nj_fit") === "true",
@@ -296,24 +300,15 @@ function startApp() {
   resetIdle();
 }
 
-// ปรับปรุงฟังก์ชันนี้ให้เช็คละเอียดขึ้น
 function checkFullscreenSupport() {
   const doc = document;
   const docEl = doc.documentElement;
-
-  // เช็คทุก Prefix ที่เป็นไปได้
   const requestMethod =
     docEl.requestFullscreen ||
     docEl.webkitRequestFullscreen ||
     docEl.mozRequestFullScreen ||
     docEl.msRequestFullscreen;
-  const isEnabled =
-    document.fullscreenEnabled ||
-    document.webkitFullscreenEnabled ||
-    document.mozFullScreenEnabled ||
-    document.msFullscreenEnabled;
 
-  // ถ้ามี API ให้ใช้ ก็แสดงปุ่มเลย
   if (requestMethod) {
     const btn = document.getElementById("btn-fullscreen");
     if (btn) btn.classList.remove("hidden");
@@ -337,11 +332,11 @@ function initPeer() {
     linkEl.href = url;
 
     const qrEl = document.getElementById("qrcode");
-    qrEl.innerHTML = ""; // เคลียร์ของเก่าก่อนเผื่อมี
+    qrEl.innerHTML = "";
     new QRCode(qrEl, {
       text: url,
-      width: 512, // เพิ่มขนาดเจนรูป
-      height: 512, // เพิ่มขนาดเจนรูป
+      width: 512,
+      height: 512,
       colorDark: "#000000",
       colorLight: "#ffffff",
       correctLevel: QRCode.CorrectLevel.L,
@@ -438,6 +433,8 @@ function onPlayerStateChange(event) {
   } else if (event.data === 0) {
     triggerNext();
   }
+  // Broadcast เพื่ออัปเดตสถานะ isPlaying ให้ Remote
+  broadcastState();
 }
 
 function showNowPlaying() {
@@ -575,17 +572,25 @@ function handleCommand(cmd, conn) {
       }
       break;
 
+    // [NEW] คำสั่ง Toggle Play
+    case "TOGGLE_PLAY":
+      if (isMaster(cmd.user.id)) togglePlay();
+      break;
+
     case "PLAY":
       if (isMaster(cmd.user.id)) player.playVideo();
       break;
     case "PAUSE":
       if (isMaster(cmd.user.id)) player.pauseVideo();
       break;
+
     case "NEXT":
-      if (isMaster(cmd.user.id)) triggerNext();
+      // [NEW] ป้องกันการกด Next รัวๆ ถ้ากำลังนับถอยหลัง
+      if (isMaster(cmd.user.id) && !state.isTransitioning) triggerNext();
       break;
+
     case "STOP":
-      if (isMaster(cmd.user.id)) {
+      if (isMaster(cmd.user.id) && !state.isTransitioning) {
         state.queue = [];
         triggerNext();
       }
@@ -635,6 +640,10 @@ function handleCommand(cmd, conn) {
 
 function triggerNext() {
   if (state.queue.length > 0) {
+    // [NEW] เริ่ม Transition
+    state.isTransitioning = true;
+    broadcastState(); // แจ้ง Client ให้ล็อกปุ่ม
+
     const song = state.queue.shift();
     const cdOverlay = document.getElementById("countdown-overlay");
     const cdNum = document.getElementById("cd-number");
@@ -662,6 +671,8 @@ function triggerNext() {
       }
     }, 1000);
   } else {
+    // [NEW] ถ้าไม่มีเพลง รีเซ็ตสถานะ
+    state.isTransitioning = false;
     state.currentSong = null;
     player.stopVideo();
 
@@ -674,7 +685,10 @@ function triggerNext() {
     broadcastState();
   }
 }
+
 function playSong(song) {
+  // [NEW] จบ Transition
+  state.isTransitioning = false;
   state.currentSong = song;
   updateMediaSession(song);
   renderDashboard();
@@ -723,6 +737,9 @@ function broadcastState() {
     masterId: state.masterId,
     currentId: state.currentSong ? state.currentSong.id : null,
     audioFx: state.audioFx,
+    // [NEW] ส่งสถานะ Player และ Transition
+    isPlaying: isPlaying,
+    isTransitioning: state.isTransitioning,
   };
   connections.forEach((c) => {
     if (c.open) c.send(payload);
@@ -895,7 +912,6 @@ function updateSettingsUI() {
   if (qSel) qSel.value = state.settings.quality;
 }
 
-// ปรับปรุงฟังก์ชัน Toggle ให้รองรับทุกค่าย
 function toggleFullscreen() {
   const doc = document;
   const docEl = doc.documentElement;
@@ -919,7 +935,6 @@ function toggleFullscreen() {
     doc.msFullscreenElement;
 
   if (!isFullscreen && requestMethod) {
-    // ใช้ .call(docEl) และดัก catch error เผื่อไว้
     requestMethod
       .call(docEl)
       .catch((err) => console.log("Fullscreen Allow Error:", err));

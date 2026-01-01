@@ -77,10 +77,8 @@ class YouTubeSearch {
   open() {
     if (window.openModal) window.openModal("search-modal");
 
-    // --- FIX: Reset Scroll Position ---
     const modalBody = document.querySelector("#search-modal .c-modal-body");
     if (modalBody) modalBody.scrollTop = 0;
-    // ----------------------------------
 
     const input = document.getElementById("inv-search-input");
     if (input) {
@@ -174,14 +172,27 @@ class YouTubeSearch {
       return;
     }
 
+    // [MODIFIED] Add checks to prevent ghosting
     this.suggestTimeout = setTimeout(async () => {
+      // Check input focus and value again
+      const currentInput = document.getElementById("inv-search-input");
+      if (!currentInput || document.activeElement !== currentInput) {
+        container.classList.add("hidden");
+        return;
+      }
+      if (currentInput.value.trim() !== query.trim()) return;
+
       if (!this.currentApiUrl) return;
+
       try {
         const res = await fetch(
           `${this.currentApiUrl}/search/suggestions?q=${encodeURIComponent(
             query
           )}`
         );
+        // Final check before render
+        if (currentInput.value.trim() !== query.trim()) return;
+
         if (!res.ok) throw new Error("No suggestions");
         const data = await res.json();
         if (data.suggestions && data.suggestions.length > 0) {
@@ -200,21 +211,30 @@ class YouTubeSearch {
     const input = document.getElementById("inv-search-input");
     if (!container) return;
 
-    // --- FIX: Reset Scroll Position ---
     container.scrollTop = 0;
-    // ----------------------------------
-
     container.innerHTML = "";
     list.forEach((text) => {
       const div = document.createElement("div");
       div.className =
         "px-4 py-3 hover:bg-zinc-700 cursor-pointer text-sm text-zinc-300 hover:text-white border-b border-zinc-700/50 last:border-0 flex items-center gap-3";
       div.innerHTML = `<i class="fa-solid fa-magnifying-glass text-zinc-500 text-xs"></i> <span>${text}</span>`;
-      div.onclick = () => {
+
+      // [MODIFIED] Logic to handle iOS taps properly
+      const handleSelect = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
         if (input) input.value = text;
         container.classList.add("hidden");
+        if (this.suggestTimeout) clearTimeout(this.suggestTimeout);
+
         this.runSearch();
+        if (input) input.blur();
       };
+
+      div.addEventListener("mousedown", handleSelect);
+      div.addEventListener("touchstart", handleSelect, { passive: false });
+
       container.appendChild(div);
     });
     container.classList.remove("hidden");
@@ -230,14 +250,12 @@ class YouTubeSearch {
     const placeholder = document.getElementById("search-placeholder");
     const modalBody = document.querySelector("#search-modal .c-modal-body");
 
-    // Hide suggestions
     document.getElementById("search-suggestions")?.classList.add("hidden");
 
     if (!isRetry) {
       if (loader) loader.classList.remove("hidden");
       if (listContainer) listContainer.innerHTML = "";
       if (placeholder) placeholder.classList.add("hidden");
-      // Reset scroll when searching new term
       if (modalBody) modalBody.scrollTop = 0;
     }
 
@@ -340,7 +358,6 @@ class YouTubeSearch {
         `;
 
       div.onclick = () => {
-        // Pass data back without hardcoded sender
         this.onSelect({
           id: item.videoId,
           title: item.title,

@@ -7,8 +7,6 @@ let peer, conn, user;
 let masterId = null;
 let isHostFxInstalled = false;
 let lastQueueData = [];
-
-// ประกาศตัวแปรสำหรับ Library ค้นหาใหม่
 let searchLib;
 
 const savedProfile = localStorage.getItem("nj_client_identity");
@@ -21,23 +19,16 @@ window.onload = () => {
   }
 
   // --- Initialize Search Library ---
-  // เรียกใช้ Class จาก youtube-search.js
   searchLib = new YouTubeSearch({
     onSelect: (item) => {
-      // เมื่อเลือกเพลงจากผลการค้นหา
       const mainInput = document.getElementById("url-input");
       if (mainInput) {
-        // สร้าง Link YouTube แล้วใส่ในช่อง Input
         mainInput.value = `https://www.youtube.com/watch?v=${item.id}`;
-
-        // Trigger Event เพื่อให้โค้ดส่วน Preview ทำงาน (ดึงปก, ชื่อเพลง)
         mainInput.dispatchEvent(new Event("input", { bubbles: true }));
-
         showToast("เลือกเพลงแล้ว กด + เพื่อส่ง");
       }
     },
   });
-  // --------------------------------
 
   const main = document.getElementById("remote-ui").querySelector(".flex-1");
   if (main) main.classList.add("overflow-y-auto", "overscroll-contain");
@@ -167,6 +158,32 @@ function updateState(data) {
     document.getElementById("user-role").classList.add("text-pink-500");
     document.getElementById("dj-add-options").classList.remove("hidden");
     if (data.audioFx) updateFxUI(data.audioFx);
+
+    // [NEW] Update Play/Pause Button
+    const btnToggle = document.getElementById("btn-toggle-play");
+    const iconToggle = document.getElementById("icon-toggle-play");
+
+    if (btnToggle && iconToggle) {
+      if (data.isPlaying) {
+        iconToggle.className = "fa-solid fa-pause text-lg";
+        btnToggle.classList.replace("text-white", "text-yellow-400");
+      } else {
+        iconToggle.className = "fa-solid fa-play text-2xl pl-1";
+        btnToggle.classList.replace("text-yellow-400", "text-white");
+      }
+    }
+
+    // [NEW] Lock Next Button during transition
+    const btnNext = document.getElementById("btn-next");
+    if (btnNext) {
+      if (data.isTransitioning) {
+        btnNext.disabled = true;
+        btnNext.classList.add("opacity-50", "cursor-not-allowed");
+      } else {
+        btnNext.disabled = false;
+        btnNext.classList.remove("opacity-50", "cursor-not-allowed");
+      }
+    }
   } else {
     document.getElementById("master-controls").classList.add("hidden");
     document.getElementById("non-master-msg").classList.remove("hidden");
@@ -257,6 +274,11 @@ function sendAction(type, data = {}) {
   if (conn && conn.open) conn.send({ type, user, ...data });
 }
 
+// [NEW] Send Toggle Play
+function sendTogglePlay() {
+  sendAction("TOGGLE_PLAY");
+}
+
 function sendMoveQueue(index, direction) {
   sendAction("MOVE_QUEUE", { index, direction });
 }
@@ -267,9 +289,6 @@ function addSong() {
   const chk = document.getElementById("chk-play-next");
   const playNext = chk && !chk.classList.contains("hidden") && chk.checked;
 
-  // ส่งคำสั่ง ADD_SONG ไปที่ Host (Host จะดึง Info เองถ้ายังไม่มี)
-  // แต่ปกติเราจะ Fetch Info ให้เสร็จที่ Client ก่อนส่งเพื่อความชัวร์
-  // (ในที่นี้ Host.js มี logic fetchVideoInfo อยู่แล้ว)
   conn.send({ type: "ADD_SONG", url, user, playNext: playNext });
 
   document.getElementById("url-input").value = "";
@@ -344,9 +363,7 @@ function resetEq() {
 const inp = document.getElementById("url-input");
 inp.addEventListener("input", (e) => {
   const val = e.target.value;
-  // เช็คเบื้องต้นว่าเป็น URL YouTube
   if (val.includes("youtu")) {
-    // ใช้ fetchVideoInfo จาก utils.js (หรือที่โหลดมาแล้ว)
     fetchVideoInfo(val).then((d) => {
       if (d.title) {
         document.getElementById("preview-box").classList.remove("hidden");
