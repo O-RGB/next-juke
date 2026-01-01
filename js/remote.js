@@ -1,20 +1,72 @@
 // next-juke/js/remote.js
 
 const urlParams = new URLSearchParams(window.location.search);
-const hostId = urlParams.get("host");
+
+// --- [ส่วนที่เพิ่ม 1] ระบบกู้คืน Host ID ---
+// ตรวจสอบว่ามี Host ID ใน URL หรือไม่ ถ้าไม่มีให้ลองหาจากความจำเครื่อง (กรณีเปิดผ่านการ Share)
+let hostId = urlParams.get("host");
+
+if (!hostId) {
+  hostId = localStorage.getItem("nj_last_host_id");
+} else {
+  // ถ้ามี Host ID ให้บันทึกไว้ใช้ครั้งหน้า
+  localStorage.setItem("nj_last_host_id", hostId);
+}
+// ----------------------------------------
 
 let peer, conn, user;
 let masterId = null;
 let isHostFxInstalled = false;
 
+// ตัวแปรเก็บลิงก์ที่ถูกแชร์มา (รอส่งเมื่อเชื่อมต่อสำเร็จ)
+let pendingShareLink = null;
+
 const savedProfile = localStorage.getItem("nj_client_identity");
 let clientProfile = savedProfile ? JSON.parse(savedProfile) : null;
 
+// --- [ส่วนที่เพิ่ม 2] ฟังก์ชันช่วยแกะลิงก์จากข้อความ ---
+function extractUrlFromText(text) {
+  if (!text) return null;
+  // Regex หา http หรือ https
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const match = text.match(urlRegex);
+  return match ? match[0] : null;
+}
+// ------------------------------------------------
+
 window.onload = () => {
+  // ตรวจสอบ Host ID ก่อนเริ่มทำงาน
   if (!hostId) {
-    updateLoadingStatus("ไม่พบ Host ID (กรุณาสแกน QR Code ใหม่)", true);
+    updateLoadingStatus(
+      "ไม่พบ Host ID (กรุณาสแกน QR Code เพื่อเข้าห้องก่อน 1 ครั้ง)",
+      true
+    );
+    document.getElementById("connection-overlay").classList.remove("hidden");
+    // ซ่อนหน้า Login ไม่ให้กดเข้าได้ถ้าไม่มี Host
+    document.getElementById("login-screen").classList.add("hidden");
     return;
   }
+
+  // --- [ส่วนที่เพิ่ม 3] ตรวจสอบ Share Target Params ---
+  const sharedUrl = urlParams.get("url");
+  const sharedText = urlParams.get("text");
+  const sharedTitle = urlParams.get("title");
+
+  // YouTube Android มักส่งลิงก์มาใน 'text' ส่วน iOS อาจมาใน 'url'
+  const foundLink = sharedUrl || extractUrlFromText(sharedText);
+
+  if (
+    foundLink &&
+    (foundLink.includes("youtube.com") || foundLink.includes("youtu.be"))
+  ) {
+    pendingShareLink = foundLink;
+    showToast(`ได้รับลิงก์: ${sharedTitle || "YouTube Video"}`);
+
+    // ใส่ลิงก์รอไว้ในช่อง input เผื่อผู้ใช้กดส่งเองหรือดู Preview
+    const inputEl = document.getElementById("url-input");
+    if (inputEl) inputEl.value = pendingShareLink;
+  }
+  // -------------------------------------------------
 
   const main = document.getElementById("remote-ui").querySelector(".flex-1");
   if (main) main.classList.add("overflow-y-auto", "overscroll-contain");
@@ -84,6 +136,22 @@ function initPeer() {
 
       conn.send({ type: "JOIN", user: user });
       conn.send({ type: "GET_STATE" });
+
+      // --- [ส่วนที่เพิ่ม 4] ส่งเพลงอัตโนมัติถ้ามี Pending Link ---
+      if (pendingShareLink) {
+        console.log("Auto sending shared link:", pendingShareLink);
+
+        // set value ให้ input เพื่อให้ addSong() ทำงานได้
+        const inputEl = document.getElementById("url-input");
+        if (inputEl) inputEl.value = pendingShareLink;
+
+        // หน่วงเวลานิดนึงเพื่อให้สถานะ User อัปเดตฝั่ง Host ก่อนส่งเพลง
+        setTimeout(() => {
+          addSong();
+          pendingShareLink = null; // เคลียร์ค่าทิ้ง
+        }, 800);
+      }
+      // ----------------------------------------------------
     });
 
     conn.on("data", (data) => {
