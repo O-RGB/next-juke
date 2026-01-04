@@ -95,7 +95,6 @@ class YouTubeSearch {
   }
 
   close() {
-    // [FIX] เพิ่มส่วนนี้: เคลียร์ timeout เมื่อปิดหน้าต่าง
     if (this.suggestTimeout) {
       clearTimeout(this.suggestTimeout);
       this.suggestTimeout = null;
@@ -167,6 +166,55 @@ class YouTubeSearch {
     return null;
   }
 
+  // --- New Server Management Methods ---
+  toggleServerList() {
+    const panel = document.getElementById("server-list-panel");
+    if (panel) panel.classList.toggle("hidden");
+  }
+
+  renderServerList() {
+    const panel = document.getElementById("server-list-panel");
+    const activeText = document.getElementById("active-server-name");
+
+    if (activeText && this.currentApiUrl) {
+      activeText.innerText = this.currentApiUrl
+        .replace("https://", "")
+        .replace("/api/v1", "");
+    }
+
+    if (!panel) return;
+
+    if (this.apiList.length === 0) {
+      panel.innerHTML =
+        '<div class="text-xs text-zinc-500 text-center py-2">No servers found</div>';
+      return;
+    }
+
+    panel.innerHTML = this.apiList
+      .map((url) => {
+        const displayUrl = url.replace("https://", "").replace("/api/v1", "");
+        const isActive = url === this.currentApiUrl;
+        return `
+            <button onclick="searchLib.setServer('${url}')" class="w-full text-left px-3 py-2 rounded-lg text-xs font-mono flex items-center justify-between ${
+          isActive
+            ? "bg-green-500/10 text-green-400 border border-green-500/20"
+            : "text-zinc-400 hover:bg-white/5"
+        }">
+                <span class="truncate">${displayUrl}</span>
+                ${isActive ? '<i class="fa-solid fa-circle-check"></i>' : ""}
+            </button>
+        `;
+      })
+      .join("");
+  }
+
+  setServer(url) {
+    this.currentApiUrl = url;
+    localStorage.setItem(this.STORAGE_KEYS.ACTIVE, url);
+    this.renderServerList();
+    if (window.showToast) window.showToast("Switched Server", "success");
+  }
+
   handleSearchInput(query) {
     const container = document.getElementById("search-suggestions");
     if (!container) return;
@@ -180,14 +228,8 @@ class YouTubeSearch {
 
     this.suggestTimeout = setTimeout(async () => {
       const currentInput = document.getElementById("inv-search-input");
-
-      // [EDITED] ลบการเช็ค document.activeElement ออก
-      // เหลือไว้แค่เช็คว่ามี input อยู่จริงไหมก็พอ
       if (!currentInput) return;
-
-      // เช็คว่าข้อความยังตรงกันอยู่ไหม (ป้องกันเน็ตช้าแล้วแสดงผลผิดคำ)
       if (currentInput.value.trim() !== query.trim()) return;
-
       if (!this.currentApiUrl) return;
 
       try {
@@ -196,10 +238,7 @@ class YouTubeSearch {
             query
           )}`
         );
-
-        // เช็คซ้ำอีกรอบก่อนแสดงผล
         if (currentInput.value.trim() !== query.trim()) return;
-
         if (!res.ok) throw new Error("No suggestions");
         const data = await res.json();
         if (data.suggestions && data.suggestions.length > 0) {
@@ -210,7 +249,7 @@ class YouTubeSearch {
       } catch (e) {
         container.classList.add("hidden");
       }
-    }, 300); // 300ms คือเวลาหน่วง
+    }, 300);
   }
 
   renderSuggestions(list) {
@@ -226,7 +265,6 @@ class YouTubeSearch {
         "px-4 py-3 hover:bg-zinc-700 cursor-pointer text-sm text-zinc-300 hover:text-white border-b border-zinc-700/50 last:border-0 flex items-center gap-3";
       div.innerHTML = `<i class="fa-solid fa-magnifying-glass text-zinc-500 text-xs"></i> <span>${text}</span>`;
 
-      // [MODIFIED] Logic to handle iOS taps properly
       const handleSelect = (e) => {
         e.preventDefault();
         e.stopPropagation();

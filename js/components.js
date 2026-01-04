@@ -55,7 +55,7 @@ const COMP_WELCOME_MODAL = `
 </div>
 `;
 
-/* [UPDATED] Settings Modal with New NextAmp UI */
+/* [UPDATED] Settings Modal with Server List UI */
 const COMP_SETTINGS_MODAL = `
 <div id="settings-modal" class="fixed inset-0 z-[100] hidden opacity-0 transition-opacity duration-300" aria-labelledby="modal-title" role="dialog" aria-modal="true">
   <div class="fixed inset-0 bg-black/90 transition-opacity"></div>
@@ -80,128 +80,42 @@ const COMP_SETTINGS_MODAL = `
             <div id="view-nextamp" class="hidden">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
                 <div class="flex flex-col gap-4">
-                  <div
-                    class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 flex flex-col gap-3"
-                  >
+                  <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 flex flex-col gap-3">
                     <div class="flex items-center gap-3">
-                      <div
-                        class="w-10 h-10 bg-zinc-950 rounded-lg flex items-center justify-center border border-zinc-800 text-pink-500"
-                      >
+                      <div class="w-10 h-10 bg-zinc-950 rounded-lg flex items-center justify-center border border-zinc-800 text-pink-500">
                         <i class="fas fa-plug text-lg"></i>
                       </div>
                       <div>
-                        <h2 class="text-lg font-bold text-white leading-none">
-                          Integration
-                        </h2>
-                        <div
-                          id="ext-status-indicator"
-                          class="flex items-center gap-2 mt-1"
-                        >
-                          <div
-                            id="ext-status-dot"
-                            class="w-2 h-2 rounded-full bg-red-500"
-                          ></div>
-                          <span
-                            id="ext-status-text"
-                            class="text-xs font-mono text-zinc-400"
-                            >Disconnected</span
-                          >
+                        <h2 class="text-lg font-bold text-white leading-none">Integration</h2>
+                        <div id="ext-status-indicator" class="flex items-center gap-2 mt-1">
+                          <div id="ext-status-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
+                          <span id="ext-status-text" class="text-xs font-mono text-zinc-400">Disconnected</span>
                         </div>
                       </div>
                     </div>
-
                     <div class="space-y-2 pt-2 border-t border-white/5">
-                      <label
-                        class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider"
-                        >Extension ID</label
-                      >
+                      <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Extension ID</label>
                       <div class="flex gap-2">
-                        <input
-                          type="text"
-                          id="input-ext-id"
-                          placeholder="Paste ID here..."
-                          class="flex-1 min-w-0 bg-black border border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-pink-500 outline-none"
-                          onchange="saveExtensionId(this.value)"
-                        />
-                        <button
-                          onclick="checkExtension()"
-                          class="bg-pink-600 hover:bg-pink-500 text-white px-4 rounded-lg text-xs font-bold transition-all"
-                        >
-                          CONNECT
-                        </button>
+                        <input type="text" id="input-ext-id" placeholder="Paste ID here..." class="flex-1 min-w-0 bg-black border border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-pink-500 outline-none" onchange="saveExtensionId(this.value)" />
+                        <button onclick="checkExtension()" class="bg-pink-600 hover:bg-pink-500 text-white px-4 rounded-lg text-xs font-bold transition-all">CONNECT</button>
                       </div>
                     </div>
-
-                    <div
-                      class="flex items-center justify-between pt-2 border-t border-white/5"
-                    >
-                      <div>
-                        <h4 class="font-bold text-xs text-white">Auto Start</h4>
-                        <p class="text-[10px] text-zinc-500">
-                          เริ่มจับเสียงทันทีเมื่อเปิดเว็บ
-                        </p>
-                      </div>
-                      <button
-                        onclick="toggleAutoStartAmp()"
-                        id="btn-autoStartAmp"
-                        class="w-10 h-6 rounded-full bg-zinc-700 relative transition-colors"
-                      >
-                        <div
-                          class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform"
-                        ></div>
-                      </button>
+                    <div class="flex items-center justify-between pt-2 border-t border-white/5">
+                      <div><h4 class="font-bold text-xs text-white">Auto Start</h4><p class="text-[10px] text-zinc-500">เริ่มจับเสียงทันทีเมื่อเปิดเว็บ</p></div>
+                      <button onclick="toggleAutoStartAmp()" id="btn-autoStartAmp" class="w-10 h-6 rounded-full bg-zinc-700 relative transition-colors"><div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform"></div></button>
                     </div>
                   </div>
-
-                  <div
-                    class="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col justify-center items-center text-center space-y-3"
-                  >
-                    <p class="text-zinc-400 text-xs">
-                      หากติดตั้งแล้วยังใช้ไม่ได้ กดปุ่มนี้เพื่อ Reset
-                    </p>
-                    <button
-                      onclick="checkExtension(true)"
-                      class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-bold border border-zinc-600"
-                    >
-                      <i class="fas fa-sync-alt mr-1"></i> Force Reconnect
-                    </button>
+                  <div class="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col justify-center items-center text-center space-y-3">
+                    <p class="text-zinc-400 text-xs">หากติดตั้งแล้วยังใช้ไม่ได้ กดปุ่มนี้เพื่อ Reset</p>
+                    <button onclick="checkExtension(true)" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-bold border border-zinc-600"><i class="fas fa-sync-alt mr-1"></i> Force Reconnect</button>
                   </div>
                 </div>
-                <div
-                  class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-0 relative overflow-hidden group flex flex-col"
-                >
-                  <div
-                    class="absolute inset-0 border-4 border-dashed border-zinc-800/50 m-4 rounded-lg flex flex-col items-center justify-center text-zinc-700 pointer-events-none z-0"
-                  >
-                    <div class="p-6">
-                      <img
-                        src="assets/next-amp.png"
-                        class="object-cover opacity-50"
-                        alt=""
-                      />
-                    </div>
-                  </div>
-                  <div
-                    class="relative z-10 flex flex-col justify-end h-full p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent"
-                  >
-                    <h3 class="text-xl font-bold text-white mb-1">
-                      NextAmp Extension
-                    </h3>
-                    <p class="text-xs text-gray-300 mb-4 line-clamp-2">
-                      (PC Only) ปลดล็อกฟีเจอร์ Pitch Shift, Reverb และ EQ
-                      สำหรับปาร์ตี้ของคุณ
-                    </p>
-
-                    <div class="flex gap-2">
-                      <a
-                        href="https://next-amp-player.vercel.app/install-extension.html"
-                        target="_blank"
-                        class="flex-1 bg-white text-black py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-gray-200 transition"
-                      >
-                        <i class="fas fa-external-link-alt"></i>
-                        เปิดหน้าดาวน์โหลด
-                      </a>
-                    </div>
+                <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-0 relative overflow-hidden group flex flex-col">
+                  <div class="absolute inset-0 border-4 border-dashed border-zinc-800/50 m-4 rounded-lg flex flex-col items-center justify-center text-zinc-700 pointer-events-none z-0"><div class="p-6"><img src="assets/next-amp.png" class="object-cover opacity-50" alt="" /></div></div>
+                  <div class="relative z-10 flex flex-col justify-end h-full p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+                    <h3 class="text-xl font-bold text-white mb-1">NextAmp Extension</h3>
+                    <p class="text-xs text-gray-300 mb-4 line-clamp-2">(PC Only) ปลดล็อกฟีเจอร์ Pitch Shift, Reverb และ EQ สำหรับปาร์ตี้ของคุณ</p>
+                    <div class="flex gap-2"><a href="https://next-amp-player.vercel.app/install-extension.html" target="_blank" class="flex-1 bg-white text-black py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-gray-200 transition"><i class="fas fa-external-link-alt"></i>เปิดหน้าดาวน์โหลด</a></div>
                   </div>
                 </div>
               </div>
@@ -235,6 +149,22 @@ const COMP_SETTINGS_MODAL = `
                     <h3 class="text-xs font-bold text-zinc-500 uppercase tracking-wider">System</h3>
                     <div class="bg-zinc-800/30 p-4 rounded-xl border border-white/5 flex items-center justify-between"><div><h4 class="font-bold text-sm text-white">Safe Mode (iOS)</h4></div><button onclick="toggleSetting('reqInt')" id="btn-reqInt" class="w-10 h-6 rounded-full bg-zinc-700 relative transition-colors"><div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform"></div></button></div>
                 </div>
+
+                <div class="space-y-4 pt-4 border-t border-white/5">
+                    <h3 class="text-xs font-bold text-zinc-500 uppercase tracking-wider">API Server</h3>
+                    <div class="bg-zinc-800/30 rounded-xl border border-white/5 overflow-hidden">
+                        <div class="p-4 flex items-center justify-between bg-zinc-800/50">
+                            <div>
+                                <h4 class="font-bold text-sm text-white">Active Instance</h4>
+                                <p id="active-server-name" class="text-xs text-green-400 truncate max-w-[200px]">-</p>
+                            </div>
+                            <button onclick="searchLib.toggleServerList()" class="text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-2 py-1 rounded transition">Change</button>
+                        </div>
+                        <div id="server-list-panel" class="hidden bg-zinc-900/50 p-2 space-y-1 max-h-40 overflow-y-auto custom-scrollbar border-t border-white/5">
+                            </div>
+                    </div>
+                </div>
+
             </div>
         </div>
       </div>

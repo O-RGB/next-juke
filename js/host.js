@@ -691,8 +691,23 @@ function promoteUser(id) {
   broadcastState();
   showToast("DJ Changed!", "info");
 }
+
 function togglePlay() {
-  isPlaying ? player.pauseVideo() : player.playVideo();
+  // [MODIFIED] Check actual player state (1 = Playing)
+  // If stuck (Buffering/Unstarted) or Paused -> Force Play & Unmute
+  if (player && typeof player.getPlayerState === "function") {
+    const state = player.getPlayerState();
+    if (state === 1) {
+      player.pauseVideo();
+    } else {
+      player.unMute();
+      player.setVolume(100);
+      player.playVideo();
+    }
+  } else {
+    // Fallback logic
+    isPlaying ? player.pauseVideo() : player.playVideo();
+  }
 }
 
 function handleSeek(val) {
@@ -793,6 +808,11 @@ function updateSettingsUI() {
     else if (p === "tr") miniQrDiv.classList.add("top-20", "right-4");
     else if (p === "bl") miniQrDiv.classList.add("bottom-24", "left-4");
     else if (p === "br") miniQrDiv.classList.add("bottom-24", "right-4");
+  }
+
+  // [NEW] Trigger Server List Render when Settings UI Updates
+  if (searchLib && typeof searchLib.renderServerList === "function") {
+    searchLib.renderServerList();
   }
 }
 
