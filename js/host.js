@@ -1,17 +1,18 @@
-// next-juke/js/host.js
+// js/host.js
 
 let wakeLock = null;
 let player, peer, peerId;
 let connections = [];
 let isAppStarted = false;
 let searchLib;
+let isScrubbing = false; // สถานะกำลังเลื่อน (ทั้งลากเอง และกดปุ่ม)
+let seekTimeout; // [NEW] Timer สำหรับปลดล็อคหลังกดปุ่ม Seek
 
 let state = {
   queue: [],
   currentSong: null,
   users: [],
   masterId: null,
-  // [NEW] เพิ่ม state เพื่อบอกว่ากำลังนับถอยหลังเปลี่ยนเพลง
   isTransitioning: false,
   settings: {
     reqInt: localStorage.getItem("nj_reqInt") !== "false",
@@ -19,6 +20,8 @@ let state = {
     quality: localStorage.getItem("nj_quality") || "auto",
     extId: localStorage.getItem("nj_extId") || "",
     autoStartAmp: localStorage.getItem("nj_autoStartAmp") === "true",
+    miniQr: localStorage.getItem("nj_miniQr") === "true",
+    qrPos: localStorage.getItem("nj_qrPos") || "br",
   },
   audioFx: {
     isInstalled: false,
@@ -31,7 +34,6 @@ let state = {
 };
 
 let isPlaying = false;
-
 let isIOS =
   /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -43,14 +45,9 @@ async function requestWakeLock() {
   try {
     if ("wakeLock" in navigator) {
       wakeLock = await navigator.wakeLock.request("screen");
-      console.log("Screen Wake Lock active");
-      wakeLock.addEventListener("release", () => {
-        console.log("Screen Wake Lock released");
-      });
+      wakeLock.addEventListener("release", () => {});
     }
-  } catch (err) {
-    console.error(`Wake Lock Error: ${err.name}, ${err.message}`);
-  }
+  } catch (err) {}
 }
 
 function updateMediaSession(song) {
@@ -58,92 +55,62 @@ function updateMediaSession(song) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: song.title,
       artist: `Requested by ${song.sender}`,
-      album: "NextCast Party",
-      artwork: [
-        { src: song.thumbnail, sizes: "96x96", type: "image/jpeg" },
-        { src: song.thumbnail, sizes: "128x128", type: "image/jpeg" },
-        { src: song.thumbnail, sizes: "192x192", type: "image/jpeg" },
-        { src: song.thumbnail, sizes: "512x512", type: "image/jpeg" },
-      ],
+      artwork: [{ src: song.thumbnail }],
     });
-    navigator.mediaSession.setActionHandler("play", () => {
-      if (player) player.playVideo();
-    });
-    navigator.mediaSession.setActionHandler("pause", () => {
-      if (player) player.pauseVideo();
-    });
+    navigator.mediaSession.setActionHandler(
+      "play",
+      () => player && player.playVideo()
+    );
+    navigator.mediaSession.setActionHandler(
+      "pause",
+      () => player && player.pauseVideo()
+    );
     navigator.mediaSession.setActionHandler("nexttrack", () => triggerNext());
-    navigator.mediaSession.setActionHandler("stop", () => {
-      if (player) player.stopVideo();
-    });
   }
 }
-
 document.addEventListener("visibilitychange", async () => {
-  if (wakeLock !== null && document.visibilityState === "visible") {
+  if (wakeLock !== null && document.visibilityState === "visible")
     await requestWakeLock();
-  }
 });
 
 function saveExtensionId(val) {
-  const cleanVal = val.trim();
-  state.settings.extId = cleanVal;
-  localStorage.setItem("nj_extId", cleanVal);
+  state.settings.extId = val.trim();
+  localStorage.setItem("nj_extId", state.settings.extId);
   checkExtension(true);
 }
-
 function toggleAutoStartAmp() {
   state.settings.autoStartAmp = !state.settings.autoStartAmp;
   localStorage.setItem("nj_autoStartAmp", state.settings.autoStartAmp);
   updateSettingsUI();
-
-  if (state.settings.autoStartAmp && state.audioFx.isInstalled) {
+  if (state.settings.autoStartAmp && state.audioFx.isInstalled)
     startAmpCapture();
-  }
 }
-
 function startAmpCapture() {
   if (!state.settings.extId) return;
-  console.log("Starting Amp Capture...");
   try {
     chrome.runtime.sendMessage(
       state.settings.extId,
-      {
-        type: "START_CAPTURE",
-      },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          console.error("Start Capture Error:", chrome.runtime.lastError);
-        } else {
-          console.log("Capture Started:", response);
-        }
-      }
+      { type: "START_CAPTURE" },
+      () => {}
     );
-  } catch (e) {
-    console.error(e);
-  }
+  } catch (e) {}
 }
-
 function checkExtension(shouldReset = false) {
   const inputEl = document.getElementById("input-ext-id");
-
   if (!state.settings.extId) {
-    if (inputEl && !inputEl.value) inputEl.value = "";
+    if (inputEl) inputEl.value = "";
     updateExtStatus(false, "No ID");
     state.audioFx.isInstalled = false;
     renderAmpStatus();
     broadcastState();
     return;
   }
-
   if (inputEl && inputEl.value === "") inputEl.value = state.settings.extId;
-
   if (!window.chrome || !chrome.runtime) {
-    updateExtStatus(false, "Runtime Not Found");
+    updateExtStatus(false, "No Runtime");
     renderAmpStatus();
     return;
   }
-
   updateExtStatus(false, "Pinging...", "text-yellow-500", "bg-yellow-500");
 
   try {
@@ -156,7 +123,6 @@ function checkExtension(shouldReset = false) {
           updateExtStatus(false, "Connection Failed");
           return;
         }
-
         chrome.runtime.sendMessage(
           state.settings.extId,
           { type: "GET_STATE" },
@@ -166,20 +132,15 @@ function checkExtension(shouldReset = false) {
               state.audioFx.isActive = response.isAudioActive;
               state.audioFx.pitch = response.pitch || 0;
               state.audioFx.reverb = response.reverb || 0;
-
               updateExtStatus(true, "Connected");
-
               if (shouldReset) {
                 chrome.runtime.sendMessage(state.settings.extId, {
                   type: "SET_PARAM",
                   key: "reset",
                   value: true,
                 });
-
                 if (state.settings.autoStartAmp) startAmpCapture();
-              } else if (state.settings.autoStartAmp) {
-                startAmpCapture();
-              }
+              } else if (state.settings.autoStartAmp) startAmpCapture();
             }
             renderAmpStatus();
             broadcastState();
@@ -188,7 +149,6 @@ function checkExtension(shouldReset = false) {
       }
     );
   } catch (e) {
-    console.error(e);
     updateExtStatus(false, "Error");
     renderAmpStatus();
   }
@@ -203,49 +163,28 @@ function updateExtStatus(
   const dot = document.getElementById("ext-status-dot");
   const txt = document.getElementById("ext-status-text");
   if (dot && txt) {
-    if (isOk) {
-      dot.className =
-        "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]";
-      txt.className = "text-green-400 font-mono text-xs font-bold";
-      txt.innerText = text;
-    } else {
-      if (text === "Pinging...") {
-        dot.className = `w-2 h-2 rounded-full bg-yellow-500 animate-pulse`;
-        txt.className = "text-yellow-500 font-mono text-xs";
-      } else {
-        dot.className = `w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]`;
-        txt.className = "text-zinc-400 font-mono text-xs";
-      }
-      txt.innerText = text;
-    }
+    dot.className = isOk
+      ? "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
+      : text === "Pinging..."
+      ? "w-2 h-2 rounded-full bg-yellow-500 animate-pulse"
+      : "w-2 h-2 rounded-full bg-red-500";
+    txt.className = isOk
+      ? "text-green-400 font-mono text-xs font-bold"
+      : text === "Pinging..."
+      ? "text-yellow-500 font-mono text-xs"
+      : "text-zinc-400 font-mono text-xs";
+    txt.innerText = text;
   }
 }
-
 function renderAmpStatus() {
   const el = document.getElementById("header-amp-status");
   if (!el) return;
-
   if (state.audioFx.isInstalled) {
-    const p =
-      state.audioFx.pitch > 0 ? `+${state.audioFx.pitch}` : state.audioFx.pitch;
-    const r = Math.round(state.audioFx.reverb * 100);
-
-    el.innerHTML = `
-        <div class="flex items-center gap-3">
-            <div class="flex items-center gap-1.5">
-                <i class="fa-solid fa-music text-[10px] opacity-70"></i>
-                <span class="hidden sm:inline opacity-70 text-[10px] uppercase tracking-wider">Pitch</span>
-                <span class="font-bold">${p}</span>
-            </div>
-            <div class="w-px h-3 bg-green-500/30"></div>
-            <div class="flex items-center gap-1.5">
-                <i class="fa-solid fa-city text-[10px] opacity-70"></i>
-                <span class="hidden sm:inline opacity-70 text-[10px] uppercase tracking-wider">Rev</span>
-                <span class="font-bold">${r}</span>
-            </div>
-        </div>
-    `;
-
+    el.innerHTML = `<div class="flex items-center gap-3"><span class="font-bold">P:${
+      state.audioFx.pitch
+    }</span><span class="font-bold">R:${Math.round(
+      state.audioFx.reverb * 100
+    )}</span></div>`;
     el.classList.remove("hidden");
     el.classList.add("flex");
   } else {
@@ -254,20 +193,20 @@ function renderAmpStatus() {
   }
 }
 
-window.showAmpSetupModal = function () {};
-
 function startApp() {
   isAppStarted = true;
   const landing = document.getElementById("landing-view");
-  landing.classList.add("opacity-0", "pointer-events-none");
+  const playerView = document.getElementById("player-view");
+
+  if (landing) landing.classList.add("opacity-0", "pointer-events-none");
 
   setTimeout(() => {
-    landing.style.display = "none";
-    const playerView = document.getElementById("player-view");
-    playerView.classList.remove("hidden");
-    setTimeout(() => playerView.classList.remove("opacity-0"), 100);
-    openModal("welcome-modal");
-
+    if (landing) landing.style.display = "none";
+    if (playerView) {
+      playerView.classList.remove("hidden");
+      setTimeout(() => playerView.classList.remove("opacity-0"), 100);
+    }
+    if (window.openModal) openModal("welcome-modal");
     checkExtension(false);
   }, 700);
 
@@ -279,12 +218,10 @@ function startApp() {
         thumbnail: songData.thumbnail,
         sender: "Host (DJ)",
       };
-
       state.queue.push(song);
-      showToast(`Added: ${song.title}`, "success");
+      if (window.showToast) showToast(`Added: ${song.title}`, "success");
       renderDashboard();
       broadcastState();
-
       if (!state.currentSong && state.queue.length === 1) triggerNext();
     },
   });
@@ -293,26 +230,28 @@ function startApp() {
   initPeer();
   updateSettingsUI();
   checkFullscreenSupport();
-
   document.addEventListener("mousemove", resetIdle);
-  document.addEventListener("touchstart", resetIdle);
   document.addEventListener("click", resetIdle);
   resetIdle();
+
+  // Slider Events
+  const slider = document.getElementById("seek-slider");
+  if (slider) {
+    const startScrub = () => (isScrubbing = true);
+    const endScrub = () => (isScrubbing = false);
+
+    slider.addEventListener("mousedown", startScrub);
+    slider.addEventListener("touchstart", startScrub, { passive: true });
+    slider.addEventListener("mouseup", endScrub);
+    slider.addEventListener("touchend", endScrub);
+    slider.addEventListener("change", endScrub);
+  }
 }
 
 function checkFullscreenSupport() {
-  const doc = document;
-  const docEl = doc.documentElement;
-  const requestMethod =
-    docEl.requestFullscreen ||
-    docEl.webkitRequestFullscreen ||
-    docEl.mozRequestFullScreen ||
-    docEl.msRequestFullscreen;
-
-  if (requestMethod) {
-    const btn = document.getElementById("btn-fullscreen");
-    if (btn) btn.classList.remove("hidden");
-  }
+  const btn = document.getElementById("btn-fullscreen");
+  if (btn && document.documentElement.requestFullscreen)
+    btn.classList.remove("hidden");
 }
 
 function initPeer() {
@@ -321,26 +260,42 @@ function initPeer() {
     peerId = id;
     const statusText = document.getElementById("status-text");
     const statusDot = document.getElementById("status-dot");
-
-    statusText.innerText = "ONLINE";
-    statusText.classList.replace("text-gray-400", "text-green-500");
-    statusDot.classList.replace("bg-red-500", "bg-green-500");
+    if (statusText) {
+      statusText.innerText = "ONLINE";
+      statusText.classList.replace("text-gray-400", "text-green-500");
+    }
+    if (statusDot) statusDot.classList.replace("bg-red-500", "bg-green-500");
 
     const url = `${window.location.origin}/remote.html?host=${id}`;
     const linkEl = document.getElementById("join-url");
-    linkEl.innerText = url;
-    linkEl.href = url;
+    if (linkEl) {
+      linkEl.innerText = url;
+      linkEl.href = url;
+    }
 
+    // Main QR
     const qrEl = document.getElementById("qrcode");
-    qrEl.innerHTML = "";
-    new QRCode(qrEl, {
-      text: url,
-      width: 512,
-      height: 512,
-      colorDark: "#000000",
-      colorLight: "#ffffff",
-      correctLevel: QRCode.CorrectLevel.L,
-    });
+    if (qrEl) {
+      qrEl.innerHTML = "";
+      new QRCode(qrEl, {
+        text: url,
+        width: 512,
+        height: 512,
+        correctLevel: QRCode.CorrectLevel.L,
+      });
+    }
+
+    // Mini QR
+    const miniQrEl = document.getElementById("mini-qrcode");
+    if (miniQrEl) {
+      miniQrEl.innerHTML = "";
+      new QRCode(miniQrEl, {
+        text: url,
+        width: 80,
+        height: 80,
+        correctLevel: QRCode.CorrectLevel.L,
+      });
+    }
   });
 
   peer.on("connection", (conn) => {
@@ -357,13 +312,9 @@ function initPeer() {
 }
 
 function initPlayer() {
-  if (window.YT && window.YT.Player) {
-    createPlayer();
-  } else {
-    window.onYouTubeIframeAPIReady = () => createPlayer();
-  }
+  if (window.YT && window.YT.Player) createPlayer();
+  else window.onYouTubeIframeAPIReady = () => createPlayer();
 }
-
 function createPlayer() {
   if (player) return;
   player = new YT.Player("youtube-player", {
@@ -378,71 +329,59 @@ function createPlayer() {
       modestbranding: 1,
       rel: 0,
       playsinline: 1,
-      vq: "small",
     },
-    events: {
-      onReady: onPlayerReady,
-      onStateChange: onPlayerStateChange,
-    },
+    events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange },
   });
 }
-
 function onPlayerReady(event) {
   event.target.mute();
   if (state.settings.quality !== "auto")
     event.target.setPlaybackQuality(state.settings.quality);
   event.target.playVideo();
 }
-
 function onPlayerStateChange(event) {
+  const playIcon = document.getElementById("play-btn-icon");
+  const bufferIcon = document.getElementById("buffering-indicator");
+  const qrScreen = document.getElementById("qr-screen");
+  const placeholder = document.getElementById("video-placeholder");
+
   if (event.data === 1) {
     isPlaying = true;
     requestWakeLock();
     if (state.currentSong) updateMediaSession(state.currentSong);
-
-    document
-      .getElementById("play-btn-icon")
-      .classList.replace("fa-play", "fa-pause");
-    document.getElementById("buffering-indicator").classList.add("hidden");
-
-    document
-      .getElementById("qr-screen")
-      .classList.add("opacity-0", "pointer-events-none");
+    if (playIcon) playIcon.classList.replace("fa-play", "fa-pause");
+    if (bufferIcon) bufferIcon.classList.add("hidden");
+    if (qrScreen) qrScreen.classList.add("opacity-0", "pointer-events-none");
+    if (placeholder) placeholder.classList.add("hidden");
 
     if (state.currentSong && state.currentSong.id !== lastPlayedSongId) {
       lastPlayedSongId = state.currentSong.id;
       showNowPlaying();
     }
-
     if (
       state.audioFx.isInstalled &&
       !state.audioFx.isActive &&
       state.settings.autoStartAmp
-    ) {
+    )
       startAmpCapture();
-    }
-
     checkAudioContext();
   } else if (event.data === 2) {
     isPlaying = false;
-    document
-      .getElementById("play-btn-icon")
-      .classList.replace("fa-pause", "fa-play");
+    if (playIcon) playIcon.classList.replace("fa-pause", "fa-play");
   } else if (event.data === 3) {
-    document.getElementById("buffering-indicator").classList.remove("hidden");
+    if (bufferIcon) bufferIcon.classList.remove("hidden");
   } else if (event.data === 0) {
     triggerNext();
   }
-  // Broadcast เพื่ออัปเดตสถานะ isPlaying ให้ Remote
   broadcastState();
 }
-
 function showNowPlaying() {
   const np = document.getElementById("now-playing-overlay");
-  np.classList.remove("opacity-0");
-  setTimeout(() => np.classList.add("opacity-0"), 5000);
+  if (np) {
+    np.classList.remove("opacity-0");
+    setTimeout(() => np.classList.add("opacity-0"), 5000);
+  }
 }
-
 function checkAudioContext() {
   if (!state.settings.reqInt) {
     hideInteraction();
@@ -453,44 +392,31 @@ function checkAudioContext() {
     hideInteraction();
     return;
   }
-  const isMuted = player.isMuted();
-  if (isIOS) {
-    if (isMuted) showInteraction();
-    else hideInteraction();
-  } else {
-    if (!hasInteracted && isMuted) showInteraction();
-    else {
-      hideInteraction();
-      if (isMuted) player.unMute();
-    }
-  }
+  if (player.isMuted()) showInteraction();
+  else hideInteraction();
 }
-
 function showInteraction(text = "แตะเพื่อเปิดเสียง") {
-  const overlay = document.getElementById("interaction-overlay");
-
-  const textEl = overlay.querySelector("h3");
-  if (textEl) textEl.innerText = text;
-
-  overlay.classList.remove("hidden");
+  const el = document.getElementById("interaction-overlay");
+  if (el) {
+    const h3 = el.querySelector("h3");
+    if (h3) h3.innerText = text;
+    el.classList.remove("hidden");
+  }
 }
 function hideInteraction() {
-  document.getElementById("interaction-overlay").classList.add("hidden");
+  const el = document.getElementById("interaction-overlay");
+  if (el) el.classList.add("hidden");
 }
-
-function handleUserInteraction(event) {
-  if (event) {
-    event.stopPropagation();
-    event.preventDefault();
+function handleUserInteraction(e) {
+  if (e) {
+    e.stopPropagation();
+    e.preventDefault();
   }
-
   if (hasInteracted) return;
-
   hasInteracted = true;
   if (player) {
     player.mute();
     player.playVideo();
-
     setTimeout(() => {
       player.unMute();
       player.setVolume(100);
@@ -506,23 +432,15 @@ function handleCommand(cmd, conn) {
       if (state.masterId === null) {
         state.masterId = u.id;
         showToast(`${u.name} is now the DJ! 👑`, "success");
-      } else if (state.masterId === u.id) {
+      } else if (state.masterId === u.id)
         showToast(`DJ ${u.name} reconnected`, "info");
-      } else {
-        showToast(`${u.name} joined`, "info");
-      }
-
-      const existingIdx = state.users.findIndex((x) => x.id === u.id);
-      if (existingIdx >= 0) {
-        state.users[existingIdx] = u;
-      } else {
-        state.users.push(u);
-      }
-
-      state.users.forEach((user) => {
-        user.isMaster = user.id === state.masterId;
-      });
-
+      else showToast(`${u.name} joined`, "info");
+      const exIdx = state.users.findIndex((x) => x.id === u.id);
+      if (exIdx >= 0) state.users[exIdx] = u;
+      else state.users.push(u);
+      state.users.forEach(
+        (user) => (user.isMaster = user.id === state.masterId)
+      );
       renderDashboard();
       broadcastState();
       break;
@@ -538,7 +456,6 @@ function handleCommand(cmd, conn) {
             `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
           sender: cmd.user.name,
         };
-
         if (cmd.playNext) {
           state.queue.unshift(song);
           showToast(`Next Track: ${song.title}`, "success");
@@ -546,90 +463,90 @@ function handleCommand(cmd, conn) {
           state.queue.push(song);
           showToast(`Added: ${song.title}`, "success");
         }
-
         renderDashboard();
         broadcastState();
         if (!state.currentSong && state.queue.length === 1) triggerNext();
       });
       break;
+    case "TOGGLE_PLAY":
+      if (isMaster(cmd.user.id)) togglePlay();
+      break;
+    case "NEXT":
+      if (isMaster(cmd.user.id) && !state.isTransitioning) triggerNext();
+      break;
 
+    // [MODIFIED] SEEK Logic - อัปเดต UI ทันทีและล็อค Loop ชั่วคราว
+    case "SEEK":
+      if (isMaster(cmd.user.id) && player && player.getDuration) {
+        const d = player.getDuration();
+        if (d > 0) {
+          let newT = player.getCurrentTime() + (cmd.amount || 0);
+          newT = Math.max(0, Math.min(d, newT)); // Clamp 0..Duration
+
+          // 1. สั่ง Player
+          player.seekTo(newT, true);
+
+          // 2. อัปเดต UI ทันที (Optimistic Update)
+          const pct = (newT / d) * 100;
+          const pBar = document.getElementById("prog-bar");
+          const sSlider = document.getElementById("seek-slider");
+          const tCurr = document.getElementById("time-curr");
+          const idleLine = document.getElementById("idle-progress-line");
+
+          if (pBar) pBar.style.width = `${pct}%`;
+          if (sSlider) sSlider.value = pct;
+          if (tCurr) tCurr.innerText = formatTime(newT);
+          if (idleLine) idleLine.style.width = `${pct}%`;
+
+          // 3. ล็อค Loop การอัปเดตชั่วคราว (กัน UI เด้งกลับ)
+          isScrubbing = true;
+          if (seekTimeout) clearTimeout(seekTimeout);
+          // ปลดล็อคหลังจาก 1 วินาที (ให้เวลา Player โหลด/Buffer)
+          seekTimeout = setTimeout(() => {
+            isScrubbing = false;
+          }, 1000);
+        }
+      }
+      break;
+
+    case "SET_FX":
+      if (
+        isMaster(cmd.user.id) &&
+        state.audioFx.isInstalled &&
+        state.settings.extId
+      ) {
+        chrome.runtime.sendMessage(state.settings.extId, {
+          type: "SET_PARAM",
+          key: cmd.key,
+          value: cmd.value,
+          index: cmd.index,
+        });
+        if (cmd.key === "pitch") state.audioFx.pitch = cmd.value;
+        if (cmd.key === "reverb") state.audioFx.reverb = cmd.value;
+        if (cmd.key === "reset") {
+          state.audioFx.pitch = 0;
+          state.audioFx.reverb = 0;
+          showToast("Audio FX Reset");
+        }
+        renderAmpStatus();
+        broadcastState();
+      }
+      break;
     case "MOVE_QUEUE":
       if (isMaster(cmd.user.id)) {
         const { index, direction } = cmd;
-        if (direction === -1 && index > 0) {
+        if (direction === -1 && index > 0)
           [state.queue[index], state.queue[index - 1]] = [
             state.queue[index - 1],
             state.queue[index],
           ];
-        } else if (direction === 1 && index < state.queue.length - 1) {
+        else if (direction === 1 && index < state.queue.length - 1)
           [state.queue[index], state.queue[index + 1]] = [
             state.queue[index + 1],
             state.queue[index],
           ];
-        }
         renderDashboard();
         broadcastState();
-      }
-      break;
-
-    // [NEW] คำสั่ง Toggle Play
-    case "TOGGLE_PLAY":
-      if (isMaster(cmd.user.id)) togglePlay();
-      break;
-
-    case "PLAY":
-      if (isMaster(cmd.user.id)) player.playVideo();
-      break;
-    case "PAUSE":
-      if (isMaster(cmd.user.id)) player.pauseVideo();
-      break;
-
-    case "NEXT":
-      // [NEW] ป้องกันการกด Next รัวๆ ถ้ากำลังนับถอยหลัง
-      if (isMaster(cmd.user.id) && !state.isTransitioning) triggerNext();
-      break;
-
-    case "STOP":
-      if (isMaster(cmd.user.id) && !state.isTransitioning) {
-        state.queue = [];
-        triggerNext();
-      }
-      break;
-    case "SEEK":
-      if (isMaster(cmd.user.id) && player) {
-        const ct = player.getCurrentTime();
-        const newTime = ct + (cmd.amount || 0);
-        player.seekTo(newTime, true);
-      }
-      break;
-    case "SET_FX":
-      if (isMaster(cmd.user.id)) {
-        if (state.audioFx.isInstalled && state.settings.extId) {
-          chrome.runtime.sendMessage(state.settings.extId, {
-            type: "SET_PARAM",
-            key: cmd.key,
-            value: cmd.value,
-            index: cmd.index,
-          });
-
-          if (cmd.key === "pitch") state.audioFx.pitch = cmd.value;
-          if (cmd.key === "reverb") state.audioFx.reverb = cmd.value;
-          if (cmd.key === "reset") {
-            state.audioFx.pitch = 0;
-            state.audioFx.reverb = 0;
-          }
-
-          if (cmd.key === "reset") {
-            showToast("Audio FX Reset", "info");
-          }
-
-          renderAmpStatus();
-          broadcastState();
-        } else {
-          showToast("Amp Extension Error", "info");
-          state.audioFx.isInstalled = false;
-          broadcastState();
-        }
       }
       break;
     case "GET_STATE":
@@ -639,173 +556,134 @@ function handleCommand(cmd, conn) {
 }
 
 function triggerNext() {
-  if (state.queue.length > 0) {
-    // [NEW] เริ่ม Transition
-    state.isTransitioning = true;
-    broadcastState(); // แจ้ง Client ให้ล็อกปุ่ม
+  const cd = document.getElementById("countdown-overlay");
+  const qrScreen = document.getElementById("qr-screen");
+  const songTitle = document.getElementById("header-song-title");
 
+  if (state.queue.length > 0) {
+    state.isTransitioning = true;
+    broadcastState();
     const song = state.queue.shift();
-    const cdOverlay = document.getElementById("countdown-overlay");
+
+    if (qrScreen) qrScreen.classList.add("opacity-0", "pointer-events-none");
+
+    const cdTitle = document.getElementById("cd-title");
+    const cdSender = document.getElementById("cd-sender");
+    const cdBg = document.getElementById("cd-bg");
     const cdNum = document.getElementById("cd-number");
 
-    document
-      .getElementById("qr-screen")
-      .classList.add("opacity-0", "pointer-events-none");
+    if (cdTitle) cdTitle.innerText = song.title;
+    if (cdSender) cdSender.innerText = song.sender;
+    if (cdBg) cdBg.src = song.thumbnail;
 
-    document.getElementById("cd-title").innerText = song.title;
-    document.getElementById("cd-sender").innerText = song.sender;
-    document.getElementById("cd-bg").src = song.thumbnail;
+    if (cd) cd.classList.remove("hidden");
 
-    cdOverlay.classList.remove("hidden");
     let count = 3;
-    cdNum.innerText = count;
+    if (cdNum) cdNum.innerText = count;
 
     const timer = setInterval(() => {
       count--;
-      if (count > 0) {
-        cdNum.innerText = count;
-      } else {
+      if (cdNum) cdNum.innerText = count;
+      if (count <= 0) {
         clearInterval(timer);
-        cdOverlay.classList.add("hidden");
+        if (cd) cd.classList.add("hidden");
         playSong(song);
       }
     }, 1000);
   } else {
-    // [NEW] ถ้าไม่มีเพลง รีเซ็ตสถานะ
     state.isTransitioning = false;
     state.currentSong = null;
     player.stopVideo();
+    if (songTitle) songTitle.classList.add("hidden");
+    if (qrScreen) qrScreen.classList.remove("opacity-0", "pointer-events-none");
+    const placeholder = document.getElementById("video-placeholder");
+    if (placeholder) placeholder.classList.remove("hidden");
 
-    const headerTitle = document.getElementById("header-song-title");
-    if (headerTitle) headerTitle.classList.add("hidden");
-
-    document
-      .getElementById("qr-screen")
-      .classList.remove("opacity-0", "pointer-events-none");
     broadcastState();
   }
 }
-
 function playSong(song) {
-  // [NEW] จบ Transition
   state.isTransitioning = false;
   state.currentSong = song;
   updateMediaSession(song);
   renderDashboard();
-
-  const headerTitle = document.getElementById("header-song-title");
-  if (headerTitle) {
-    headerTitle.innerText = song.title;
-    headerTitle.classList.remove("hidden");
+  const t = document.getElementById("header-song-title");
+  if (t) {
+    t.innerText = song.title;
+    t.classList.remove("hidden");
   }
 
-  document.getElementById("np-title").innerText = song.title;
-  document.getElementById("np-thumb").src = song.thumbnail;
-  document.getElementById("np-sender").innerText = song.sender;
+  const npTitle = document.getElementById("np-title");
+  const npThumb = document.getElementById("np-thumb");
+  const npSender = document.getElementById("np-sender");
+
+  if (npTitle) npTitle.innerText = song.title;
+  if (npThumb) npThumb.src = song.thumbnail;
+  if (npSender) npSender.innerText = song.sender;
 
   player.loadVideoById({
     videoId: song.id,
     suggestedQuality:
       state.settings.quality !== "auto" ? state.settings.quality : "large",
   });
-
-  if (isIOS) {
-    setTimeout(() => {
-      const pState = player.getPlayerState();
-      if (
-        !hasInteracted &&
-        !isPlaying &&
-        (pState === -1 || pState === 5 || pState === 2)
-      ) {
-        showInteraction("แตะเพื่อเริ่มปาร์ตี้");
-      }
-    }, 1500);
-  }
-
   broadcastState();
 }
-
 function isMaster(id) {
   return id === state.masterId;
 }
-
 function broadcastState() {
-  const payload = {
-    type: "UPDATE_STATE",
-    queue: state.queue,
-    users: state.users,
-    masterId: state.masterId,
-    currentId: state.currentSong ? state.currentSong.id : null,
-    audioFx: state.audioFx,
-    // [NEW] ส่งสถานะ Player และ Transition
-    isPlaying: isPlaying,
-    isTransitioning: state.isTransitioning,
-  };
   connections.forEach((c) => {
-    if (c.open) c.send(payload);
+    if (c.open)
+      c.send({
+        type: "UPDATE_STATE",
+        queue: state.queue,
+        users: state.users,
+        masterId: state.masterId,
+        currentId: state.currentSong?.id,
+        audioFx: state.audioFx,
+        isPlaying,
+        isTransitioning: state.isTransitioning,
+      });
   });
-}
-
-function showToast(msg, type = "info") {
-  const t = document.createElement("div");
-  const color = type === "success" ? "text-green-400" : "text-blue-400";
-  t.className = `bg-zinc-900 border border-zinc-700 text-white px-4 py-3 rounded-xl shadow-xl animate-[fadeIn_0.3s] text-sm font-bold flex items-center gap-2 w-full`;
-  t.innerHTML = `
-    <i class="fa-solid fa-${
-      type === "success" ? "check" : "info-circle"
-    } ${color} shrink-0"></i>
-    <span class="break-words leading-tight flex-1 text-left">${msg}</span>
-  `;
-  document.getElementById("toast-container").appendChild(t);
-  setTimeout(() => t.remove(), 3000);
 }
 
 function renderDashboard() {
   const qList = document.getElementById("queue-list");
-  document.getElementById("queue-count").innerText = state.queue.length;
-
-  if (state.queue.length === 0) {
+  if (qList) {
+    document.getElementById("queue-count").innerText = state.queue.length;
     qList.innerHTML =
-      '<div class="text-zinc-600 text-xs italic text-center py-4">No songs in queue</div>';
-  } else {
-    qList.innerHTML = state.queue
+      state.queue.length === 0
+        ? '<div class="text-zinc-600 text-xs italic text-center py-4">No songs</div>'
+        : state.queue
+            .map(
+              (s, i) =>
+                `<div class="flex justify-between p-2 bg-zinc-800/30 rounded border border-white/5 text-xs"><span class="truncate flex-1 text-gray-300">${
+                  i + 1
+                }. ${
+                  s.title
+                }</span><span class="text-[10px] text-gray-500 ml-2">${
+                  s.sender
+                }</span></div>`
+            )
+            .join("");
+  }
+  const uList = document.getElementById("user-list");
+  if (uList) {
+    document.getElementById("user-count").innerText = state.users.length;
+    uList.innerHTML = state.users
       .map(
-        (s, i) => `
-                <div class="flex justify-between items-center p-2 bg-zinc-800/30 rounded border border-white/5 text-xs">
-                    <span class="truncate flex-1 text-gray-300">${i + 1}. ${
-          s.title
-        }</span>
-                    <span class="text-[10px] text-gray-500 ml-2">${
-                      s.sender
-                    }</span>
-                </div>`
+        (u) =>
+          `<div class="flex justify-between p-2 bg-zinc-800/30 rounded border border-white/5 text-xs"><span class="${
+            u.id === state.masterId ? "text-red-500 font-bold" : "text-gray-300"
+          }">${u.name} ${u.id === state.masterId ? "👑" : ""}</span>${
+            u.id !== state.masterId
+              ? `<button onclick="promoteUser('${u.id}')" class="text-[10px] bg-zinc-700 px-2 rounded hover:bg-zinc-600 text-white">Make DJ</button>`
+              : ""
+          }</div>`
       )
       .join("");
   }
-
-  const uList = document.getElementById("user-list");
-  document.getElementById("user-count").innerText = state.users.length;
-  uList.innerHTML = state.users
-    .map(
-      (u) => `
-            <div class="flex justify-between items-center p-2 bg-zinc-800/30 rounded border border-white/5 text-xs">
-                <span class="${
-                  u.id === state.masterId
-                    ? "text-red-500 font-bold"
-                    : "text-gray-300"
-                }">
-                    ${u.name} ${u.id === state.masterId ? "👑" : ""}
-                </span>
-                ${
-                  u.id !== state.masterId
-                    ? `<button onclick="promoteUser('${u.id}')" class="text-[10px] bg-zinc-700 px-2 py-0.5 rounded hover:bg-zinc-600 text-white">Make DJ</button>`
-                    : ""
-                }
-            </div>`
-    )
-    .join("");
 }
-
 function promoteUser(id) {
   state.masterId = id;
   state.users.forEach((u) => (u.isMaster = u.id === id));
@@ -813,161 +691,137 @@ function promoteUser(id) {
   broadcastState();
   showToast("DJ Changed!", "info");
 }
-
 function togglePlay() {
-  if (isPlaying) player.pauseVideo();
-  else player.playVideo();
+  isPlaying ? player.pauseVideo() : player.playVideo();
 }
 
 function handleSeek(val) {
-  if (player) {
-    const dur = player.getDuration();
-    player.seekTo((val / 100) * dur, true);
+  isScrubbing = true;
+
+  const pBar = document.getElementById("prog-bar");
+  const tCurr = document.getElementById("time-curr");
+
+  if (pBar) pBar.style.width = `${val}%`;
+
+  if (player && player.getDuration) {
+    const d = player.getDuration();
+    if (d > 0) {
+      const seekTime = (val / 100) * d;
+      if (tCurr) tCurr.innerText = formatTime(seekTime);
+      player.seekTo(seekTime, true);
+    }
   }
 }
 
 setInterval(() => {
   if (player && isPlaying) {
-    const c = player.getCurrentTime();
-    const d = player.getDuration();
-
+    const c = player.getCurrentTime(),
+      d = player.getDuration();
     if (d > 0) {
-      document.getElementById("time-curr").innerText = formatTime(c);
-      document.getElementById("time-dur").innerText = formatTime(d);
-
-      const pct = (c / d) * 100;
-      document.getElementById("prog-bar").style.width = `${pct}%`;
-      document.getElementById("seek-slider").value = pct;
-
+      const tCurr = document.getElementById("time-curr");
+      const tDur = document.getElementById("time-dur");
+      const pBar = document.getElementById("prog-bar");
+      const sSlider = document.getElementById("seek-slider");
       const idleLine = document.getElementById("idle-progress-line");
-      if (idleLine) idleLine.style.width = `${pct}%`;
-    }
-  }
-}, 1000);
 
-function switchTab(tab) {
-  ["dashboard", "settings", "nextamp"].forEach((t) => {
-    const view = document.getElementById(`view-${t}`);
-    const btn = document.getElementById(`tab-${t}`);
+      if (tDur) tDur.innerText = formatTime(d);
 
-    if (view && btn) {
-      if (t === tab) {
-        view.classList.remove("hidden");
-        btn.classList.remove("border-transparent", "text-gray-500");
-        btn.classList.add("border-red-600", "text-white");
-      } else {
-        view.classList.add("hidden");
-        btn.classList.remove("border-red-600", "text-white");
-        btn.classList.add("border-transparent", "text-gray-500");
+      if (!isScrubbing) {
+        const pct = (c / d) * 100;
+        if (pBar) pBar.style.width = `${pct}%`;
+        if (sSlider) sSlider.value = pct;
+        if (tCurr) tCurr.innerText = formatTime(c);
+        if (idleLine) idleLine.style.width = `${pct}%`;
       }
     }
-  });
-}
+  }
+}, 500);
 
 function toggleSetting(key) {
   state.settings[key] = !state.settings[key];
   localStorage.setItem(`nj_${key}`, state.settings[key]);
   updateSettingsUI();
 }
-
 function updateQuality(val) {
   state.settings.quality = val;
   localStorage.setItem("nj_quality", val);
-  if (player && state.currentSong) {
-    const currentTime = player.getCurrentTime();
-    player.loadVideoById({
-      videoId: state.currentSong.id,
-      startSeconds: currentTime,
-      suggestedQuality: val,
-    });
-  }
 }
 
 function updateSettingsUI() {
-  const setBtnState = (id, isActive) => {
+  const setBtn = (id, active) => {
     const btn = document.getElementById(id);
     if (btn) {
       btn.className = `w-10 h-6 rounded-full relative transition-colors ${
-        isActive ? "bg-green-600" : "bg-zinc-700"
+        active ? "bg-green-600" : "bg-zinc-700"
       }`;
-      btn.firstElementChild.className = `absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-        isActive ? "translate-x-5" : "translate-x-1"
-      }`;
+      if (btn.firstElementChild)
+        btn.firstElementChild.className = `absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+          active ? "translate-x-5" : "translate-x-1"
+        }`;
     }
   };
+  setBtn("btn-reqInt", state.settings.reqInt);
+  setBtn("btn-fit", state.settings.fit);
+  setBtn("btn-autoStartAmp", state.settings.autoStartAmp);
+  setBtn("btn-miniQr", state.settings.miniQr);
 
-  setBtnState("btn-reqInt", state.settings.reqInt);
-  setBtnState("btn-fit", state.settings.fit);
-  setBtnState("btn-autoStartAmp", state.settings.autoStartAmp);
-
-  const wrap = document.getElementById("video-wrapper");
-  if (state.settings.fit) {
-    wrap.className =
-      "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100dvw] h-[56.25dvw] min-h-[100dvh] min-w-[177.78dvh] pointer-events-none transition-all duration-500 z-0 bg-black";
-  } else {
-    wrap.className =
-      "relative w-full h-full flex items-center justify-center transition-all duration-500";
+  const vWrap = document.getElementById("video-wrapper");
+  if (vWrap) {
+    if (state.settings.fit)
+      vWrap.className =
+        "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100dvw] h-[56.25dvw] min-h-[100dvh] min-w-[177.78dvh] pointer-events-none transition-all duration-500 z-0 bg-black";
+    else
+      vWrap.className =
+        "relative w-full h-full flex items-center justify-center transition-all duration-500";
   }
+
   const qSel = document.getElementById("sel-quality");
   if (qSel) qSel.value = state.settings.quality;
+
+  const miniQrDiv = document.getElementById("mini-qr");
+  const qrPosSel = document.getElementById("sel-qrPos");
+  if (qrPosSel) qrPosSel.value = state.settings.qrPos;
+
+  if (miniQrDiv) {
+    if (state.settings.miniQr) miniQrDiv.classList.remove("hidden");
+    else miniQrDiv.classList.add("hidden");
+
+    miniQrDiv.classList.remove("top-20", "left-4", "right-4", "bottom-24");
+
+    const p = state.settings.qrPos;
+    if (p === "tl") miniQrDiv.classList.add("top-20", "left-4");
+    else if (p === "tr") miniQrDiv.classList.add("top-20", "right-4");
+    else if (p === "bl") miniQrDiv.classList.add("bottom-24", "left-4");
+    else if (p === "br") miniQrDiv.classList.add("bottom-24", "right-4");
+  }
+}
+
+function updateQrPos(val) {
+  state.settings.qrPos = val;
+  localStorage.setItem("nj_qrPos", val);
+  updateSettingsUI();
 }
 
 function toggleFullscreen() {
-  const doc = document;
-  const docEl = doc.documentElement;
-
-  const requestMethod =
-    docEl.requestFullscreen ||
-    docEl.webkitRequestFullscreen ||
-    docEl.mozRequestFullScreen ||
-    docEl.msRequestFullscreen;
-
-  const exitMethod =
-    doc.exitFullscreen ||
-    doc.webkitExitFullscreen ||
-    doc.mozCancelFullScreen ||
-    doc.msExitFullscreen;
-
-  const isFullscreen =
-    doc.fullscreenElement ||
-    doc.webkitFullscreenElement ||
-    doc.mozFullScreenElement ||
-    doc.msFullscreenElement;
-
-  if (!isFullscreen && requestMethod) {
-    requestMethod
-      .call(docEl)
-      .catch((err) => console.log("Fullscreen Allow Error:", err));
-  } else if (isFullscreen && exitMethod) {
-    exitMethod
-      .call(doc)
-      .catch((err) => console.log("Fullscreen Exit Error:", err));
-  }
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
 }
-
 function resetIdle() {
   document.body.classList.remove("idle-mode");
-
   clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => {
-    const settingsHidden = document
-      .getElementById("settings-modal")
-      .classList.contains("hidden");
-    const welcomeHidden = document
-      .getElementById("welcome-modal")
-      .classList.contains("hidden");
-
-    if (settingsHidden && welcomeHidden && isAppStarted) {
+  const isModalOpen =
+    !document.getElementById("settings-modal").classList.contains("hidden") ||
+    !document.getElementById("search-modal").classList.contains("hidden");
+  if (!isModalOpen && isAppStarted) {
+    idleTimer = setTimeout(() => {
       document.body.classList.add("idle-mode");
-    }
-  }, 3000);
-}
-
-function copyJoinLink() {
-  const link = document.getElementById("join-url").href;
-  if (link && link !== "#") {
-    navigator.clipboard.writeText(link).then(() => {
-      showToast("Link Copied!", "success");
-    });
+    }, 3000);
   }
+}
+function copyJoinLink() {
+  const link = document.getElementById("join-url");
+  if (link)
+    navigator.clipboard
+      .writeText(link.href)
+      .then(() => showToast("Link Copied!", "success"));
 }

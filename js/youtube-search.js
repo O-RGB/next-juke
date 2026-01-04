@@ -95,6 +95,12 @@ class YouTubeSearch {
   }
 
   close() {
+    // [FIX] เพิ่มส่วนนี้: เคลียร์ timeout เมื่อปิดหน้าต่าง
+    if (this.suggestTimeout) {
+      clearTimeout(this.suggestTimeout);
+      this.suggestTimeout = null;
+    }
+
     if (window.closeModal) window.closeModal("search-modal");
   }
 
@@ -172,14 +178,14 @@ class YouTubeSearch {
       return;
     }
 
-    // [MODIFIED] Add checks to prevent ghosting
     this.suggestTimeout = setTimeout(async () => {
-      // Check input focus and value again
       const currentInput = document.getElementById("inv-search-input");
-      if (!currentInput || document.activeElement !== currentInput) {
-        container.classList.add("hidden");
-        return;
-      }
+
+      // [EDITED] ลบการเช็ค document.activeElement ออก
+      // เหลือไว้แค่เช็คว่ามี input อยู่จริงไหมก็พอ
+      if (!currentInput) return;
+
+      // เช็คว่าข้อความยังตรงกันอยู่ไหม (ป้องกันเน็ตช้าแล้วแสดงผลผิดคำ)
       if (currentInput.value.trim() !== query.trim()) return;
 
       if (!this.currentApiUrl) return;
@@ -190,7 +196,8 @@ class YouTubeSearch {
             query
           )}`
         );
-        // Final check before render
+
+        // เช็คซ้ำอีกรอบก่อนแสดงผล
         if (currentInput.value.trim() !== query.trim()) return;
 
         if (!res.ok) throw new Error("No suggestions");
@@ -203,7 +210,7 @@ class YouTubeSearch {
       } catch (e) {
         container.classList.add("hidden");
       }
-    }, 300);
+    }, 300); // 300ms คือเวลาหน่วง
   }
 
   renderSuggestions(list) {
@@ -241,6 +248,11 @@ class YouTubeSearch {
   }
 
   async runSearch(isRetry = false) {
+    if (this.suggestTimeout) {
+      clearTimeout(this.suggestTimeout);
+      this.suggestTimeout = null;
+    }
+
     const input = document.getElementById("inv-search-input");
     const query = input ? input.value.trim() : "";
     if (!query) return;
@@ -344,7 +356,7 @@ class YouTubeSearch {
       div.innerHTML = `
             <div class="relative w-32 h-20 shrink-0 bg-black rounded-lg overflow-hidden group-hover:opacity-80 transition">
                 <img src="${thumb?.url}" class="w-full h-full object-cover" loading="lazy">
-                <div class="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">${timeStr}</div>
+                <div class="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">${timeStr}</div>
             </div>
             <div class="flex-1 min-w-0 flex flex-col justify-center py-1">
                 <h4 class="text-sm font-bold text-white leading-snug line-clamp-2 mb-1 group-hover:text-red-500 transition-colors">${item.title}</h4>

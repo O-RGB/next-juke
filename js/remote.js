@@ -1,55 +1,81 @@
-// next-juke/js/remote.js
+// js/remote.js
 
 const urlParams = new URLSearchParams(window.location.search);
 const hostId = urlParams.get("host");
-
-let peer, conn, user;
-let masterId = null;
-let isHostFxInstalled = false;
-let lastQueueData = [];
-let searchLib;
-
-const savedProfile = localStorage.getItem("nj_client_identity");
-let clientProfile = savedProfile ? JSON.parse(savedProfile) : null;
+let peer,
+  conn,
+  user,
+  masterId = null,
+  isHostFxInstalled = false,
+  searchLib,
+  clientProfile = JSON.parse(
+    localStorage.getItem("nj_client_identity") || "null"
+  );
 
 window.onload = () => {
-  if (!hostId) {
-    updateLoadingStatus("ไม่พบ Host ID (กรุณาสแกน QR Code ใหม่)", true);
-    return;
+  // Inject EQ Logic (เพราะย้าย HTML ไป js/components.js)
+  const eqCont = document.getElementById("eq-sliders-container");
+  if (eqCont) {
+    const bands = [
+      "60",
+      "170",
+      "310",
+      "600",
+      "1k",
+      "3k",
+      "6k",
+      "12k",
+      "14k",
+      "16k",
+    ];
+    eqCont.innerHTML = bands
+      .map(
+        (l, i) =>
+          `<div class="flex flex-col items-center gap-2 flex-1 min-w-[30px]"><div class="h-24 flex items-center"><input type="range" min="-12" max="12" step="1" value="0" oninput="setEq(${i}, this.value)" class="c-slider -rotate-90 w-24" /></div><span class="text-[9px] text-zinc-500 font-mono">${l}</span></div>`
+      )
+      .join("");
   }
 
-  // --- Initialize Search Library ---
+  if (!hostId) {
+    updateLoadingStatus("ไม่พบ Host ID", true);
+    return;
+  }
   searchLib = new YouTubeSearch({
     onSelect: (item) => {
-      const mainInput = document.getElementById("url-input");
-      if (mainInput) {
-        mainInput.value = `https://www.youtube.com/watch?v=${item.id}`;
-        mainInput.dispatchEvent(new Event("input", { bubbles: true }));
+      const input = document.getElementById("url-input");
+      if (input) {
+        input.value = `https://www.youtube.com/watch?v=${item.id}`;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
         showToast("เลือกเพลงแล้ว กด + เพื่อส่ง");
       }
     },
   });
 
-  const main = document.getElementById("remote-ui").querySelector(".flex-1");
-  if (main) main.classList.add("overflow-y-auto", "overscroll-contain");
-
   if (clientProfile && clientProfile.name) {
-    document.getElementById("username-input").value = clientProfile.name;
+    // [FIX] เช็คก่อน Set ค่า (แก้ Error: Cannot set properties of null at line 54)
+    const usernameInput = document.getElementById("username-input");
+    if (usernameInput) {
+      usernameInput.value = clientProfile.name;
+    }
     user = clientProfile;
     initPeer();
   } else {
     document.getElementById("connection-overlay").classList.add("hidden");
-    document.getElementById("login-screen").classList.remove("hidden");
+    const loginScreen = document.getElementById("login-screen");
+    if (loginScreen) loginScreen.classList.remove("hidden");
   }
 };
 
-// --- Connection & PeerJS Logic ---
-
 function handleJoin() {
-  const name = document.getElementById("username-input").value.trim();
+  const input = document.getElementById("username-input");
+  if (!input) return;
+  const name = input.value.trim();
   if (!name) return;
-  const uid = clientProfile ? clientProfile.id : crypto.randomUUID();
-  user = { id: uid, name: name, isMaster: false };
+  user = {
+    id: clientProfile ? clientProfile.id : crypto.randomUUID(),
+    name,
+    isMaster: false,
+  };
   localStorage.setItem("nj_client_identity", JSON.stringify(user));
   document.getElementById("connection-overlay").classList.remove("hidden");
   document.getElementById("login-screen").classList.add("hidden");
@@ -59,9 +85,10 @@ function handleJoin() {
 
 function updateLoadingStatus(text, isError = false) {
   const el = document.getElementById("conn-status-text");
-  el.innerText = text;
-  if (isError) el.classList.add("text-red-500");
-  else el.classList.remove("text-red-500");
+  if (el) {
+    el.innerText = text;
+    el.className = isError ? "text-red-500 text-sm" : "text-zinc-400 text-sm";
+  }
 }
 
 function initPeer() {
@@ -69,12 +96,13 @@ function initPeer() {
     peer.destroy();
     peer = null;
   }
-  document.getElementById("user-name").innerText = user.name;
-  document.getElementById("user-avatar").innerText = user.name[0].toUpperCase();
+  const nameEl = document.getElementById("user-name");
+  const avatarEl = document.getElementById("user-avatar");
+  if (nameEl) nameEl.innerText = user.name;
+  if (avatarEl) avatarEl.innerText = user.name[0].toUpperCase();
 
   peer = new Peer(PEER_CONFIG);
-
-  peer.on("open", () => {
+  peer.on("open", (id) => {
     updateLoadingStatus("พบเซิร์ฟเวอร์... กำลังเข้าห้อง");
     setStatus(
       "เชื่อมต่อ...",
@@ -83,330 +111,242 @@ function initPeer() {
       "border-yellow-500"
     );
     conn = peer.connect(hostId);
-
     conn.on("open", () => {
-      updateLoadingStatus("เชื่อมต่อสำเร็จ! กำลังดึงข้อมูล...");
+      updateLoadingStatus("เชื่อมต่อสำเร็จ!");
       setStatus(
         "ออนไลน์",
         "text-green-500",
         "bg-green-500/10",
         "border-green-500"
       );
-      conn.send({ type: "JOIN", user: user });
+      conn.send({ type: "JOIN", user });
       conn.send({ type: "GET_STATE" });
     });
-
     conn.on("data", (data) => {
       if (data.type === "UPDATE_STATE") {
         document.getElementById("connection-overlay").classList.add("hidden");
-        document.getElementById("remote-ui").classList.remove("hidden");
+        const remoteUI = document.getElementById("remote-ui");
+        if (remoteUI) remoteUI.classList.remove("hidden");
         updateState(data);
       }
     });
-
     conn.on("close", () => {
       document.getElementById("connection-overlay").classList.remove("hidden");
-      updateLoadingStatus("หลุดการเชื่อมต่อ... กำลังต่อใหม่", true);
-      setStatus(
-        "หลุดการเชื่อมต่อ",
-        "text-red-500",
-        "bg-red-500/10",
-        "border-red-500"
-      );
+      updateLoadingStatus("หลุดการเชื่อมต่อ...", true);
+      setStatus("หลุด", "text-red-500", "bg-red-500/10", "border-red-500");
       setTimeout(checkAndReconnect, 2000);
     });
   });
-
   peer.on("error", (err) => {
-    updateLoadingStatus("เกิดข้อผิดพลาด: " + err.type, true);
+    updateLoadingStatus("Error: " + err.type, true);
     setTimeout(checkAndReconnect, 3000);
   });
 }
-
 function checkAndReconnect() {
-  if (!peer || peer.disconnected || peer.destroyed || (conn && !conn.open)) {
+  if (!peer || peer.disconnected || peer.destroyed || (conn && !conn.open))
     initPeer();
-  }
 }
-
-function setStatus(text, textColor, bgColor, borderColor) {
+function setStatus(text, tc, bc, boc) {
   const b = document.getElementById("status-badge");
-  b.innerText = text;
-  b.className = `text-[10px] px-2 py-1 rounded-full border ${textColor} ${bgColor} ${borderColor}`;
+  if (b) {
+    b.innerText = text;
+    b.className = `text-[10px] px-2 py-1 rounded-full border ${tc} ${bc} ${boc}`;
+  }
 }
 
 function updateState(data) {
   masterId = data.masterId;
   const isMaster = user.id === masterId;
-
   if (data.audioFx) {
-    if (isHostFxInstalled && !data.audioFx.isInstalled) {
-      showAlert(
-        "Amp Disconnected!",
-        "Host PC lost connection to NextAmp Extension.",
-        "error"
-      );
-    }
+    if (isHostFxInstalled && !data.audioFx.isInstalled)
+      showAlert("Amp Disconnected!", "Host lost connection.", "error");
     isHostFxInstalled = data.audioFx.isInstalled;
-    updateFxBtnAppearance();
   }
 
+  const masterControls = document.getElementById("master-controls");
+  const nonMasterMsg = document.getElementById("non-master-msg");
+  const userRole = document.getElementById("user-role");
+  const djAddOptions = document.getElementById("dj-add-options");
+
   if (isMaster) {
-    document.getElementById("master-controls").classList.remove("hidden");
-    document.getElementById("non-master-msg").classList.add("hidden");
-    document.getElementById("user-role").innerText = "👑 DJ MASTER";
-    document.getElementById("user-role").classList.add("text-pink-500");
-    document.getElementById("dj-add-options").classList.remove("hidden");
+    if (masterControls) masterControls.classList.remove("hidden");
+    if (nonMasterMsg) nonMasterMsg.classList.add("hidden");
+    if (userRole) {
+      userRole.innerText = "👑 DJ MASTER";
+      userRole.className = "text-[10px] text-pink-500 font-mono uppercase";
+    }
+    if (djAddOptions) djAddOptions.classList.remove("hidden");
     if (data.audioFx) updateFxUI(data.audioFx);
 
-    // [NEW] Update Play/Pause Button
-    const btnToggle = document.getElementById("btn-toggle-play");
-    const iconToggle = document.getElementById("icon-toggle-play");
+    const icon = document.getElementById("icon-toggle-play"),
+      btn = document.getElementById("btn-toggle-play");
 
-    if (btnToggle && iconToggle) {
+    if (icon && btn) {
       if (data.isPlaying) {
-        iconToggle.className = "fa-solid fa-pause text-lg";
-        btnToggle.classList.replace("text-white", "text-yellow-400");
+        icon.className = "fa-solid fa-pause text-lg";
+        btn.classList.replace("bg-red-600", "bg-yellow-500");
       } else {
-        iconToggle.className = "fa-solid fa-play text-2xl pl-1";
-        btnToggle.classList.replace("text-yellow-400", "text-white");
+        icon.className = "fa-solid fa-play text-2xl pl-1";
+        btn.classList.replace("bg-yellow-500", "bg-red-600");
       }
     }
 
-    // [NEW] Lock Next Button during transition
-    const btnNext = document.getElementById("btn-next");
-    if (btnNext) {
+    const nextBtn = document.getElementById("btn-next");
+    if (nextBtn) {
       if (data.isTransitioning) {
-        btnNext.disabled = true;
-        btnNext.classList.add("opacity-50", "cursor-not-allowed");
+        nextBtn.disabled = true;
+        nextBtn.classList.add("opacity-50");
       } else {
-        btnNext.disabled = false;
-        btnNext.classList.remove("opacity-50", "cursor-not-allowed");
+        nextBtn.disabled = false;
+        nextBtn.classList.remove("opacity-50");
       }
     }
   } else {
-    document.getElementById("master-controls").classList.add("hidden");
-    document.getElementById("non-master-msg").classList.remove("hidden");
-    document.getElementById("user-role").innerText = "ผู้ร่วมงาน";
-    document.getElementById("user-role").classList.remove("text-pink-500");
-    document.getElementById("dj-add-options").classList.add("hidden");
+    if (masterControls) masterControls.classList.add("hidden");
+    if (nonMasterMsg) nonMasterMsg.classList.remove("hidden");
+    if (userRole) {
+      userRole.innerText = "ผู้ร่วมงาน";
+      userRole.className = "text-[10px] text-gray-500 font-mono uppercase";
+    }
+    if (djAddOptions) djAddOptions.classList.add("hidden");
   }
-
-  lastQueueData = data.queue || [];
-  document.getElementById("q-count-btn").innerText = lastQueueData.length;
-  updateQueueUI(lastQueueData);
+  const qCountBtn = document.getElementById("q-count-btn");
+  if (qCountBtn) qCountBtn.innerText = (data.queue || []).length;
+  updateQueueUI(data.queue || []);
 }
 
 function updateQueueUI(queue) {
-  const qList = document.getElementById("queue-list-modal");
-  if (!qList) return;
-  const isMaster = user && user.id === masterId;
-
-  if (queue.length === 0) {
-    qList.innerHTML =
-      '<div class="flex flex-col items-center justify-center h-full text-zinc-500 space-y-2 py-10 opacity-50"><i class="fa-solid fa-music text-4xl"></i><p class="text-xs">ยังไม่มีเพลงในคิว</p></div>';
-  } else {
-    qList.innerHTML = queue
-      .map(
-        (s, i) => `
-        <div class="flex gap-3 items-center p-3 bg-zinc-800/30 rounded-xl border border-white/5 hover:bg-zinc-800 transition">
-            ${
-              isMaster
-                ? `<div class="flex flex-col gap-1 shrink-0 mr-1">
-                      <button onclick="sendMoveQueue(${i}, -1)" class="w-8 h-8 bg-zinc-700/50 hover:bg-zinc-600 rounded-lg flex items-center justify-center text-zinc-300 ${
-                    i === 0 ? "opacity-30 pointer-events-none" : ""
-                  } active:scale-90"><i class="fa-solid fa-chevron-up text-xs"></i></button>
-                      <button onclick="sendMoveQueue(${i}, 1)" class="w-8 h-8 bg-zinc-700/50 hover:bg-zinc-600 rounded-lg flex items-center justify-center text-zinc-300 ${
-                    i === queue.length - 1
-                      ? "opacity-30 pointer-events-none"
-                      : ""
-                  } active:scale-90"><i class="fa-solid fa-chevron-down text-xs"></i></button>
-                  </div>`
-                : `<div class="w-8 h-8 flex items-center justify-center bg-white/5 rounded-full text-zinc-500 font-mono text-xs font-bold">${
-                    i + 1
-                  }</div>`
-            }
-            <div class="relative w-16 h-12 shrink-0 bg-black rounded-lg overflow-hidden border border-white/10">
-                <img src="${
-                  s.thumbnail
-                }" class="w-full h-full object-cover opacity-80" loading="lazy">
-            </div>
-            <div class="flex-1 min-w-0">
-                <div class="text-sm font-bold text-white truncate leading-tight mb-1">${
-                  s.title
-                }</div>
-                <div class="text-[10px] text-zinc-400 flex items-center gap-1">
-                    <i class="fa-solid fa-user-circle"></i> ${s.sender}
-                </div>
-            </div>
-        </div>`
-      )
-      .join("");
-  }
+  const list = document.getElementById("queue-list-modal");
+  if (!list) return;
+  const isMaster = user.id === masterId;
+  list.innerHTML =
+    queue.length === 0
+      ? '<div class="flex flex-col items-center justify-center h-full text-zinc-500 space-y-2 py-10 opacity-50"><i class="fa-solid fa-music text-4xl"></i><p class="text-xs">ไม่มีเพลง</p></div>'
+      : queue
+          .map(
+            (s, i) => `
+      <div class="flex gap-3 items-center p-3 bg-zinc-800/30 rounded-xl border border-white/5">
+         ${
+           isMaster
+             ? `<div class="flex flex-col gap-1 shrink-0 mr-1"><button onclick="sendMoveQueue(${i}, -1)" class="w-8 h-8 bg-zinc-700/50 rounded-lg flex items-center justify-center text-zinc-300 ${
+                 i === 0 ? "opacity-30" : ""
+               }"><i class="fa-solid fa-chevron-up text-xs"></i></button><button onclick="sendMoveQueue(${i}, 1)" class="w-8 h-8 bg-zinc-700/50 rounded-lg flex items-center justify-center text-zinc-300 ${
+                 i === queue.length - 1 ? "opacity-30" : ""
+               }"><i class="fa-solid fa-chevron-down text-xs"></i></button></div>`
+             : `<div class="w-8 h-8 flex items-center justify-center bg-white/5 rounded-full text-zinc-500 text-xs font-bold">${
+                 i + 1
+               }</div>`
+         }
+         <img src="${
+           s.thumbnail
+         }" class="w-16 h-12 bg-black rounded-lg object-cover opacity-80" />
+         <div class="flex-1 min-w-0"><div class="text-sm font-bold text-white truncate">${
+           s.title
+         }</div><div class="text-[10px] text-zinc-400">${s.sender}</div></div>
+      </div>`
+          )
+          .join("");
 }
 
-// --- FX & Controls Logic ---
-
-function updateFxBtnAppearance() {
-  const btnFx = document.getElementById("btn-open-fx");
-  const btnEq = document.getElementById("btn-open-eq");
-  if (!btnFx || !btnEq) return;
-  if (isHostFxInstalled) {
-    btnFx.classList.remove("opacity-50", "grayscale");
-    btnEq.classList.remove("opacity-50", "grayscale");
-  } else {
-    btnFx.classList.add("opacity-50", "grayscale");
-    btnEq.classList.add("opacity-50", "grayscale");
-  }
+// [FIX] เรียก openModal โดยตรง (ไม่ผ่าน UI)
+function checkFxAvailability(cb) {
+  if (isHostFxInstalled) cb();
+  else showAlert("Required", "Host need NextAmp.", "warning");
 }
-
-function checkFxAvailability(callback) {
-  if (isHostFxInstalled) callback();
-  else
-    showAlert(
-      "Extension Required",
-      "Host PC must have NextAmp Extension installed.",
-      "warning"
-    );
-}
-
 function sendAction(type, data = {}) {
   if (conn && conn.open) conn.send({ type, user, ...data });
 }
-
-// [NEW] Send Toggle Play
 function sendTogglePlay() {
   sendAction("TOGGLE_PLAY");
 }
-
-function sendMoveQueue(index, direction) {
-  sendAction("MOVE_QUEUE", { index, direction });
+function sendMoveQueue(idx, dir) {
+  sendAction("MOVE_QUEUE", { index: idx, direction: dir });
 }
 
 function addSong() {
-  const url = document.getElementById("url-input").value;
+  const input = document.getElementById("url-input");
+  if (!input) return;
+  const url = input.value;
   if (!url) return;
   const chk = document.getElementById("chk-play-next");
-  const playNext = chk && !chk.classList.contains("hidden") && chk.checked;
-
-  conn.send({ type: "ADD_SONG", url, user, playNext: playNext });
-
-  document.getElementById("url-input").value = "";
+  conn.send({ type: "ADD_SONG", url, user, playNext: chk && chk.checked });
+  input.value = "";
   document.getElementById("preview-box").classList.add("hidden");
   if (chk) chk.checked = false;
-
-  const btn = document.getElementById("add-btn");
-  btn.disabled = true;
-  btn.className =
-    "w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700 text-gray-500 transition-colors";
-
-  if (playNext) showToast("แทรกเพลงคิวถัดไปเรียบร้อย!");
-  else showToast("ส่งเพลงแล้ว!");
+  document.getElementById("add-btn").disabled = true;
+  showToast("ส่งเพลงแล้ว!");
 }
 
-function updateFxUI(audioFx) {
-  const pVal = audioFx.pitch || 0;
+function updateFxUI(fx) {
   const pText = document.getElementById("pitch-val-text");
-  if (pText) pText.innerText = (pVal > 0 ? "+" : "") + pVal;
-
-  const rVal = audioFx.reverb || 0;
+  if (pText) pText.innerText = (fx.pitch > 0 ? "+" : "") + fx.pitch;
   const rSlider = document.getElementById("fx-reverb");
+  if (rSlider) rSlider.value = fx.reverb;
   const rText = document.getElementById("reverb-val-text");
-  if (rSlider) rSlider.value = rVal;
-  if (rText) rText.innerText = Math.round(rVal * 100) + "%";
+  if (rText) rText.innerText = Math.round(fx.reverb * 100) + "%";
 }
-
-function setFx(key, value) {
-  sendAction("SET_FX", { key, value: parseFloat(value) });
-  if (key === "reverb")
-    document.getElementById("reverb-val-text").innerText =
-      Math.round(value * 100) + "%";
+function setFx(k, v) {
+  sendAction("SET_FX", { key: k, value: parseFloat(v) });
+  if (k === "reverb") {
+    const el = document.getElementById("reverb-val-text");
+    if (el) el.innerText = Math.round(v * 100) + "%";
+  }
 }
-
-function changePitch(delta) {
-  const txt = document.getElementById("pitch-val-text");
-  let current = parseInt(txt.innerText) || 0;
-  let next = current + delta;
-  if (next > 12) next = 12;
-  if (next < -12) next = -12;
-  txt.innerText = (next > 0 ? "+" : "") + next;
-  setFx("pitch", next);
+function changePitch(d) {
+  const t = document.getElementById("pitch-val-text");
+  if (!t) return;
+  let n = (parseInt(t.innerText) || 0) + d;
+  if (n > 12) n = 12;
+  if (n < -12) n = -12;
+  t.innerText = (n > 0 ? "+" : "") + n;
+  setFx("pitch", n);
 }
-
 function resetFx() {
-  setFx("pitch", 0);
-  setFx("reverb", 0);
-  sendAction("SET_FX", { key: "reset" });
-  document.getElementById("pitch-val-text").innerText = "0";
-  document.getElementById("fx-reverb").value = 0;
-  document.getElementById("reverb-val-text").innerText = "0%";
+  setFx("reset");
 }
-
-function setEq(index, value) {
-  sendAction("SET_FX", {
-    key: "eq",
-    value: parseFloat(value),
-    index: parseInt(index),
-  });
+function setEq(i, v) {
+  sendAction("SET_FX", { key: "eq", value: parseFloat(v), index: parseInt(i) });
 }
-
 function resetEq() {
-  const inputs = document.querySelectorAll('#eq-modal input[type="range"]');
-  inputs.forEach((inp, i) => {
+  document.querySelectorAll("#eq-modal input").forEach((inp, i) => {
     inp.value = 0;
     setEq(i, 0);
   });
 }
 
-// --- Event Listeners ---
-
-const inp = document.getElementById("url-input");
-inp.addEventListener("input", (e) => {
-  const val = e.target.value;
-  if (val.includes("youtu")) {
-    fetchVideoInfo(val).then((d) => {
-      if (d.title) {
-        document.getElementById("preview-box").classList.remove("hidden");
-        document.getElementById("prev-img").src = d.thumbnail_url;
-        document.getElementById("prev-title").innerText = d.title;
-        const btn = document.getElementById("add-btn");
-        btn.disabled = false;
-        btn.className =
-          "w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-pink-600 text-white shadow-lg shadow-pink-600/20 transition-colors";
-      }
-    });
-  } else {
-    document.getElementById("preview-box").classList.add("hidden");
-  }
-});
+// Event Listeners
+// [FIX] เพิ่มการเช็คว่ามี element url-input จริงไหมก่อนใส่ Event Listener (แก้ Error: Cannot read properties of null at line 287)
+const urlInput = document.getElementById("url-input");
+if (urlInput) {
+  urlInput.addEventListener("input", (e) => {
+    if (e.target.value.includes("youtu"))
+      fetchVideoInfo(e.target.value).then((d) => {
+        if (d.title) {
+          document.getElementById("preview-box").classList.remove("hidden");
+          document.getElementById("prev-img").src = d.thumbnail_url;
+          document.getElementById("prev-title").innerText = d.title;
+          document.getElementById("add-btn").disabled = false;
+        }
+      });
+    else document.getElementById("preview-box").classList.add("hidden");
+  });
+}
 
 async function pasteFromClipboard() {
   try {
-    const text = await navigator.clipboard.readText();
-    if (!text) {
-      showToast("Clipboard ว่างเปล่า");
-      return;
-    }
-    if (text.includes("youtube.com") || text.includes("youtu.be")) {
+    const t = await navigator.clipboard.readText();
+    if (t) {
       const input = document.getElementById("url-input");
-      input.value = text;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      showToast("วางลิงก์แล้ว!");
-    } else {
-      showToast("ไม่ใช่ลิงก์ YouTube");
+      if (input) {
+        input.value = t;
+        input.dispatchEvent(new Event("input"));
+        showToast("วางลิงก์แล้ว!");
+      }
     }
-  } catch (err) {
-    showToast("ต้องอนุญาตเข้าถึง Clipboard");
+  } catch (e) {
+    showToast("Clipboard Error");
   }
 }
-
-function showToast(msg) {
-  const t = document.getElementById("toast");
-  document.getElementById("toast-msg").innerText = msg;
-  t.classList.remove("opacity-0");
-  setTimeout(() => t.classList.add("opacity-0"), 2000);
-}
-
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") checkAndReconnect();
 });
